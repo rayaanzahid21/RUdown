@@ -2,6 +2,8 @@
 
 **Less planning. More going.** A React + TypeScript + Tailwind hackathon app for agreeing on a group hangout, day trip, or overnight getaway.
 
+**Install on iPhone or Android:** open the hosted site on your phone and tap **Install app**. See [mobile installation and limits](docs/MOBILE.md). This is an installable web app with home-screen icons and mobile navigation.
+
 ## Run on this Windows workspace
 
 Double-click `../Start-RUdown.cmd`, or run it from a terminal. Open the local URL printed by the server (normally `http://127.0.0.1:5173`). A portable Node.js runtime lives in `../.tools/`; no system install is required. Stop the server with Ctrl+C.
@@ -71,6 +73,7 @@ Test SOL has no real monetary value. Planning prices stay in USD; no exchange ra
 ```sh
 node scripts/test-domain.mjs
 node scripts/test-calendar.mjs
+node scripts/test-mobile.mjs
 node scripts/test-api.mjs http://127.0.0.1:5173
 npx tsc --noEmit
 npm run build

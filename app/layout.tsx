@@ -1,5 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { AppPlatform } from './components/AppPlatform';
 import "./globals.css";
+import "./mobile.css";
 
 export const metadata: Metadata = {
   title: "RUdown — Less planning. More going.",
@@ -7,8 +9,11 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
+    apple: "/icons/apple-touch-icon.png",
   },
 };
+
+export const viewport: Viewport = { width:'device-width', initialScale:1, viewportFit:'cover', themeColor:'#faf9f6' };
 
 export default function RootLayout({
   children,
@@ -17,7 +22,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <head><link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials"/><meta name="apple-mobile-web-app-capable" content="yes"/><meta name="apple-mobile-web-app-title" content="RUdown"/></head>
+      <body className="antialiased"><AppPlatform>{children}</AppPlatform></body>
     </html>
   );
 }

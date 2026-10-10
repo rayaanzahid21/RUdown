@@ -1,0 +1,31 @@
+.mobile-tabbar{display:none}
+.landing-install{display:flex;align-items:center;gap:13px;margin:-8px 0 28px}
+.landing-install>span{font-size:11px;color:var(--muted);max-width:170px;line-height:1.5}
+.install-preview{display:flex;align-items:center;gap:17px;margin:8px 0 24px}
+.install-preview img{border-radius:17px;box-shadow:0 5px 15px #243c3120}
+.install-preview strong{display:block;font-size:23px;letter-spacing:-.7px}
+.install-preview span,.install-preview small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+.install-preview small{font-size:10px}
+.install-guide{margin-top:23px}.install-guide h3{display:flex;gap:8px;align-items:center;font-size:15px}
+.install-guide ol{padding-left:22px;margin:0;font-size:13px;line-height:1.7;color:var(--muted)}
+.install-guide li{padding:4px 0}.install-guide strong{color:var(--ink)}.install-guide svg{display:inline;vertical-align:middle}
+.connection-banner{position:sticky;top:0;z-index:80;display:flex;justify-content:center;align-items:center;gap:10px;background:#f5dfb8;color:#624c26;padding:12px max(20px,env(safe-area-inset-left));font-size:12px;line-height:1.5}
+@media(max-width:760px){
+ body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+ .app-shell{min-height:100dvh}.app-main{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+ .mobile-tabbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;z-index:70;bottom:0;left:0;right:0;border-top:1px solid #e0e5dc;background:#fffefbf5;backdrop-filter:blur(18px);padding:7px max(8px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));box-shadow:0 -8px 25px #243c3106}
+ .mobile-tabbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:49px;border-radius:12px;color:#778172;font-size:10px;font-weight:600}
+ .mobile-tabbar button.active{color:#314e39;background:#edf1e6}.mobile-tabbar button.active svg{stroke-width:2.5}
+ .topbar{height:calc(66px + env(safe-area-inset-top));padding-top:env(safe-area-inset-top)}
+ .topbar-actions{gap:5px}.topbar-actions .install-button.compact{width:40px;height:44px;padding:0;border:0}.install-button.compact>span{display:none}
+ .breadcrumb strong{max-width:122px}.topbar-actions .button{min-height:44px}.mobile-menu{width:40px;height:44px}
+ .sidebar.open{top:calc(66px + env(safe-area-inset-top));height:calc(100dvh - 138px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto}
+ .toast{bottom:calc(85px + env(safe-area-inset-bottom));font-size:12px}
+ .modal-backdrop{padding-top:max(15px,env(safe-area-inset-top));padding-bottom:max(15px,env(safe-area-inset-bottom));z-index:1000}
+ .modal{max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+ .modal-head .icon-button{min-width:44px;min-height:44px}.form-stack input,.form-stack select,.form-stack textarea,.location-search input{font-size:16px}
+ .landing-nav{padding-top:calc(24px + env(safe-area-inset-top))}.landing footer{padding-bottom:calc(25px + env(safe-area-inset-bottom))}
+ .landing-install{gap:12px}.landing-install .button{min-height:44px}.landing-install>span{font-size:10px}
+ .connection-banner{font-size:11px;padding-top:calc(9px + env(safe-area-inset-top));position:relative}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
