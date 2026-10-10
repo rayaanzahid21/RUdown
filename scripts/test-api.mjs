@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+const base=process.argv[2]||'http://127.0.0.1:5173';
+async function post(body,token){const r=await fetch(base+'/api/groups',{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});return {status:r.status,...await r.json()};}
+const created=await post({action:'create',name:'QA shared group',displayName:'QA Organizer',type:'hangout',deadline:new Date(Date.now()+86400000).toISOString()});assert.equal(created.status,200,JSON.stringify(created));const code=created.session.code;const first=created.memberId;assert.ok(created.token);assert.equal(created.session.members[0].authHash,undefined);
+const joined=await post({action:'join',code,displayName:'QA Friend'});assert.equal(joined.status,200);assert.equal(joined.session.members.length,2);let s=joined.session;
+const noAuth=await fetch(base+'/api/groups?code='+code);assert.equal(noAuth.status,400);
+const forged=await post({action:'select',code,revision:s.revision,id:'picnic'},joined.token);assert.equal(forged.status,400);assert.match(forged.error,/organizer/);
+for(const [id,token] of [[first,created.token],[joined.memberId,joined.token]]){const member=s.members.find(m=>m.id===id);const result=await post({...member,action:'preferences',code,revision:s.revision},token);assert.equal(result.status,200,JSON.stringify(result));s=result.session;}
+let result=await post({action:'select',code,revision:s.revision,id:'picnic'},created.token);assert.equal(result.status,200,JSON.stringify(result));s=result.session;
+const oldRevision=s.revision;result=await post({action:'approve',code,revision:s.revision,version:s.version,acknowledge:true},created.token);assert.equal(result.status,200);s=result.session;assert.ok(s.approvals[first]);
+const stale=await post({action:'idea',code,revision:oldRevision,name:'Stale write'},joined.token);assert.equal(stale.status,409);
+result=await post({action:'approve',code,revision:s.revision,version:s.version,acknowledge:true},joined.token);assert.equal(result.status,200);s=result.session;assert.equal(Object.keys(s.approvals).length,2);
+result=await post({action:'expense',code,revision:s.revision,name:'Only organizer snack',cents:333,basis:'group',members:[first]},created.token);assert.equal(result.status,200);s=result.session;assert.equal(Object.keys(s.approvals).length,0);
+const fresh=await fetch(base+'/api/groups?code='+code,{headers:{Authorization:'Bearer '+joined.token}}).then(r=>r.json());assert.equal(fresh.session.revision,s.revision);assert.equal(fresh.session.expenses.at(-1).cents,333);assert.ok(fresh.session.members.every(m=>!m.authHash));
+console.log('PASS real database: create, join, member isolation, organizer permissions, preferences, select plan, both approvals, stale-write protection, expense invalidation, shared reload, no credential leakage.');
+console.log('QA group created in local database:',code);
