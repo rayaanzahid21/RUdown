@@ -13,3 +13,21 @@ export const searches = sqliteTable('searches', {
   data: text('data').notNull(),
   expires: integer('expires').notNull(),
 });
+export const calendarConnections = sqliteTable('calendar_connections', {
+ id:text('id').primaryKey(),
+ code:text('code').notNull(),
+ member:text('member').notNull(),
+ refresh:text('refresh').notNull(),
+ eventId:text('event_id').notNull(),
+ synced:text('synced'),
+ status:text('status').notNull().default('pending'),
+ lease:integer('lease').notNull().default(0),
+ updated:integer('updated').notNull().default(0),
+});
+export const calendarOauth = sqliteTable('calendar_oauth', {
+ state:text('state').primaryKey(),
+ code:text('code').notNull(),
+ member:text('member').notNull(),
+ browser:text('browser').notNull(),
+ expires:integer('expires').notNull(),
+});

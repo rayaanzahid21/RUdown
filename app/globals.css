@@ -15,3 +15,12 @@
 @media(max-width:420px){.activity-grid{grid-template-columns:1fr}.card-photo{height:215px}.card-title{font-size:24px;min-height:0}.card-kicker{font-size:9px}.card-location,.card-fit{font-size:10px}.card-footer button{font-size:11px}.card-footer span{font-size:10px}.card-footer strong{font-size:22px}.hero-actions{flex-direction:column}.hero-actions .button{width:100%}.hero-copy h1{font-size:42px}.hero-visual{height:360px}.floating-plan{padding:17px}.floating-plan h3{font-size:22px}.hero-proof{font-size:10px}.page-heading h1{font-size:29px}.banner-meta>div+div{display:none}.category-chips{gap:5px}.category-chips .chip{padding:8px 10px}.photo-badge{font-size:10px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media(max-width:760px){.sidebar{visibility:hidden}.sidebar.open{visibility:visible}}
+/* Calendar planning */
+.calendar-panel h2{display:flex;align-items:center;gap:10px}
+.calendar-date{display:flex;flex-direction:column;gap:5px;background:#f3f5ef;padding:18px;border-radius:14px;margin:18px 0;color:#244d3c}
+.calendar-date strong{font-size:19px}.calendar-date small{opacity:.7}
+.calendar-options{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:25px;padding-top:24px;border-top:1px solid #e5e6df}
+.calendar-options>div+div{border-left:1px solid #e5e6df;padding-left:24px}
+.calendar-options h3{margin-top:0}.calendar-actions{display:flex;gap:15px;flex-wrap:wrap;align-items:center}
+.calendar-status{display:inline-flex;align-items:center;gap:8px;color:#365c45;background:#edf2e8;border-radius:9px;padding:10px;font-size:13px}
+@media(max-width:700px){.calendar-options{grid-template-columns:1fr}.calendar-options>div+div{border-left:0;border-top:1px solid #e5e6df;padding-left:0;padding-top:20px}.calendar-panel .section-heading{align-items:flex-start;flex-wrap:wrap}.calendar-panel .form-grid{grid-template-columns:1fr}.calendar-panel input{min-width:0;width:100%}}

@@ -13,6 +13,13 @@ export function mutate(s:Session,memberId:string,action:string,p:any):Session {
   if(!['own','offer','need'].includes(p.ride))throw new InputError('Choose a ride preference.');
   const safe:Partial<Member>={name:textValue(p.name,'Display name',40),location:{label:textValue(loc.label,'Location',200),lat:loc.lat,lng:loc.lng},budget:integer(p.budget,'Budget in cents',0,10000000),miles:integer(p.miles,'Travel limit',1,3000),categories:[...new Set(p.categories)] as string[],availability:[...new Set(p.availability)] as string[],dietary:typeof p.dietary==='string'?p.dietary.slice(0,250):'',accessibility:typeof p.accessibility==='string'?p.accessibility.slice(0,250):'',ride:p.ride,seats:p.ride==='offer'?integer(p.seats,'Passenger seats',1,8):0,ready:true};
   Object.assign(me,safe);invalidate(s);
+ } else if(action==='schedule') {
+  owner();
+  const start=Date.parse(p.start),end=Date.parse(p.end);
+  if(!Number.isFinite(start)||!Number.isFinite(end)||start<Date.now()||end<=start||end-start>14*86400000)throw new InputError('Choose a future start and an end within 14 days after it.');
+  const timeZone=textValue(p.timeZone,'Time zone',80);
+  try{new Intl.DateTimeFormat('en-US',{timeZone}).format();}catch{throw new InputError('Choose a valid time zone.');}
+  s.schedule={start:new Date(start).toISOString(),end:new Date(end).toISOString(),timeZone};invalidate(s);
  } else if(action==='select') {
   owner(); const a=catalog.find(a=>a.id===p.id&&a.type===s.type);if(!a)throw new InputError('Choose a plan for this trip type.');s.selected=a.id;s.expenses=expensesFor(a,s.members);invalidate(s);
  } else if(action==='expense') {

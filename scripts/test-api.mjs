@@ -12,5 +12,10 @@ const stale=await post({action:'idea',code,revision:oldRevision,name:'Stale writ
 result=await post({action:'approve',code,revision:s.revision,version:s.version,acknowledge:true},joined.token);assert.equal(result.status,200);s=result.session;assert.equal(Object.keys(s.approvals).length,2);
 result=await post({action:'expense',code,revision:s.revision,name:'Only organizer snack',cents:333,basis:'group',members:[first]},created.token);assert.equal(result.status,200);s=result.session;assert.equal(Object.keys(s.approvals).length,0);
 const fresh=await fetch(base+'/api/groups?code='+code,{headers:{Authorization:'Bearer '+joined.token}}).then(r=>r.json());assert.equal(fresh.session.revision,s.revision);assert.equal(fresh.session.expenses.at(-1).cents,333);assert.ok(fresh.session.members.every(m=>!m.authHash));
-console.log('PASS real database: create, join, member isolation, organizer permissions, preferences, select plan, both approvals, stale-write protection, expense invalidation, shared reload, no credential leakage.');
+const schedule={start:new Date(Date.now()+2*86400000).toISOString(),end:new Date(Date.now()+2*86400000+7200000).toISOString(),timeZone:'America/New_York'};
+result=await post({action:'schedule',code,revision:s.revision,...schedule},joined.token);assert.equal(result.status,400);
+result=await post({action:'schedule',code,revision:s.revision,...schedule},created.token);assert.equal(result.status,200);assert.deepEqual(result.session.schedule,schedule);
+const calendar=await fetch(base+'/api/calendar?code='+code,{headers:{Authorization:'Bearer '+created.token}}).then(r=>r.json());assert.equal(calendar.configured,false);assert.equal(calendar.connected,false);
+const denied=await fetch(base+'/api/calendar?code='+code);assert.equal(denied.status,401);
+console.log('PASS real database: group flow, approvals, stale-write protection, member isolation, schedule authorization/persistence, unconfigured calendar state, no credential leakage.');
 console.log('QA group created in local database:',code);

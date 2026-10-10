@@ -17,6 +17,7 @@ npm ci
 npm run db:generate  # only after schema changes; initial migration is already committed
 npm run build
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_nebulous_komodo.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_dry_captain_stacy.sql
 npm run dev
 ```
 
@@ -50,6 +51,7 @@ Keep future credentials in server runtime variables, never frontend code. There 
 - Nearby carpool suggestions with estimated straight-line detours, two-party consent, seat-capacity enforcement, and prevention of a rider accepting multiple confirmed rides.
 - Injected Solana wallet connection (e.g. Phantom), real confirmed Devnet balance lookup, Explorer link, and faucet link.
 - Server-side membership/organizer checks, validation, optimistic concurrency to reject stale writes, and planning-deadline enforcement.
+- Organizer-set outing dates, time-zone-aware display, and one-click Google Calendar export. Opt-in server-side calendar sync is implemented but requires Google OAuth configuration; see [calendar setup](docs/CALENDAR-SETUP.md).
 
 ## Solana: exact status
 
@@ -68,6 +70,7 @@ Test SOL has no real monetary value. Planning prices stay in USD; no exchange ra
 
 ```sh
 node scripts/test-domain.mjs
+node scripts/test-calendar.mjs
 node scripts/test-api.mjs http://127.0.0.1:5173
 npx tsc --noEmit
 npm run build
@@ -84,7 +87,7 @@ See [docs/DEMO.md](docs/DEMO.md) for a three-minute presentation script.
 - **Escrow and refunds:** Build, test, and deploy an Anchor program before enabling deposits. It needs per-session/per-wallet accounting, version-bound approvals, release caps, cutoff-aware withdrawals, unsuccessful-deadline refunds, unused-balance recovery, and tests against unauthorized or duplicate withdrawals.
 - **Demo data:** All activity listings, prices, capacities, itineraries, and photos are illustrative. Venue opening hours, live inventory, reservations, dietary suitability, and accessibility are unverified. Live map search is not a live activity recommendation catalog.
 - **Travel:** Distances, pickup distances, and detours use the Haversine formula. No road routing, traffic estimates, or travel times are claimed. Integrate a routing provider for production.
-- **Scheduling:** Availability is morning/afternoon/evening for the intended outing. Agree on the actual date with the group; calendar availability matching is not implemented.
+- **Scheduling:** Availability matching uses morning/afternoon/evening. The organizer can set actual outing dates separately. Calendar sync is one-way; reading free/busy availability is not implemented. Live OAuth validation is pending configuration; mocked integration tests cover sync and consent handling.
 - **Identity:** The prototype uses invite codes and device-held access tokens. There is no account recovery, cross-device identity transfer, member removal, or organizer transfer. Do not clear browser storage if you need to retain access. The most recently joined group is restored on reload.
 - **Scale:** Groups support up to 12 people, 50 expenses, and 50 suggestions. Add service-level rate limiting, invite expiry, account recovery, and database retention rules before broad public use.
 - **External services:** Photon is a best-effort public demo service for reasonable use. Searches are explicit (not per-keystroke), throttled in the UI, and cached. For sustained usage, configure a private/paid provider. Respect [Photon's usage guidance](https://github.com/komoot/photon#demo-server) and [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/). Searches may be unavailable if their service is down. Leaflet loads from unpkg, photos from Unsplash, and map tiles require connectivity.
