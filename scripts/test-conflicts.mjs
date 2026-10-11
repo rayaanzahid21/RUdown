@@ -44,12 +44,16 @@ assert.equal((await route.POST(req({},'wrong-token'))).status,401);
 assert.equal((await route.POST(req({revision:-1}))).status,409);
 assert.equal((await route.POST(req({consent:false}))).status,400);
 assert.equal((await route.POST(req())).status,503);
-let calls=0;globalThis.__testEnv.OPENAI_API_KEY='fake-test-only';
-globalThis.fetch=async(url,options)=>{calls++;assert.equal(url,'https://api.openai.com/v1/responses');const b=JSON.parse(options.body);assert.equal(b.store,false);assert.equal(b.text.format.strict,true);assert.ok(!b.input.includes('test-token'));return Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({summary:'Ask for another date.',optionId:'picnic',adjustments:['Collect more availability.']})}]}]});};
+let calls=0;globalThis.__testEnv.GEMINI_API_KEY='fake-test-only';
+globalThis.fetch=async(url,options)=>{calls++;assert.equal(url,'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent');assert.equal(options.headers['x-goog-api-key'],'fake-test-only');const b=JSON.parse(options.body);assert.equal(b.generationConfig.responseMimeType,'application/json');assert.equal(b.generationConfig.responseJsonSchema.additionalProperties,false);assert.ok(!JSON.stringify(b.contents).includes('test-token'));return Response.json({candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify({summary:'Ask for another date.',optionId:'picnic',adjustments:['Collect more availability.']})}]}}]});};
 let response=await route.POST(req());assert.equal(response.status,200);assert.equal((await response.json()).summary,'Ask for another date.');assert.equal(calls,1);
 assert.equal((await route.POST(req())).status,200);assert.equal(calls,1,'Identical revision should use cache');
+// Provider quota failures and incomplete/unsafe results never become advice.
+s.revision++;save();globalThis.fetch=async()=>Response.json({error:{status:'RESOURCE_EXHAUSTED'}},{status:429});assert.equal((await route.POST(req())).status,429);
+s.revision++;save();globalThis.fetch=async()=>Response.json({candidates:[{finishReason:'SAFETY'}]});assert.equal((await route.POST(req())).status,502);
+s.revision++;save();globalThis.fetch=async()=>Response.json({candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify({summary:'Invalid option',optionId:'made-up-plan',adjustments:[]})}]}}]});assert.equal((await route.POST(req())).status,503);
 // A concurrent edit prevents publishing advice calculated against old constraints.
-globalThis.fetch=async()=>{s.revision++;save();return Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({summary:'Old result',optionId:null,adjustments:[]})}]}]});};
+globalThis.fetch=async()=>{s.revision++;save();return Response.json({candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify({summary:'Old result',optionId:null,adjustments:[]})}]}}]});};
 s.revision++;save();assert.equal((await route.POST(req())).status,409);
 // Authenticate group changes, persist feedback, redact credentials and reject stale writes.
 const groupRequest=(action,p={})=>new Request('https://example.test/api/groups',{method:'POST',headers:{Authorization:'Bearer test-token',Origin:'https://example.test'},body:JSON.stringify({action,code:s.code,revision:s.revision,...p})});
