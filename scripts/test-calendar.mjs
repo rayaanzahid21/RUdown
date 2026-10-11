@@ -3,8 +3,8 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import ts from 'typescript';
 const dir=new URL('../.sites-runtime/calendar-tests/',import.meta.url);mkdirSync(dir,{recursive:true});
-function compile(name,path){let source=readFileSync(new URL(path,import.meta.url),'utf8').replace("import { env } from 'cloudflare:workers';","const env=globalThis.__calendarEnv;").replace(/from ['"](?:\.\/|@\/lib\/)(planning|calendar|calendar-server|actions)['"]/g,"from './$1.mjs'");writeFileSync(new URL(name+'.mjs',dir),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText);}
-for(const n of ['planning','actions','calendar','calendar-server'])compile(n,`../lib/${n}.ts`);
+function compile(name,path){let source=readFileSync(new URL(path,import.meta.url),'utf8').replace("import { env } from 'cloudflare:workers';","const env=globalThis.__calendarEnv;").replace(/from ['"](?:\.\/|@\/lib\/)(nearby|planning|calendar|calendar-server|actions)['"]/g,"from './$1.mjs'");writeFileSync(new URL(name+'.mjs',dir),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText);}
+for(const n of ['nearby','planning','actions','calendar','calendar-server'])compile(n,`../lib/${n}.ts`);
 compile('callback','../app/api/calendar/callback/route.ts');
 const sqlite=new DatabaseSync(':memory:');
 sqlite.exec('CREATE TABLE sessions(code TEXT PRIMARY KEY,data TEXT,revision INTEGER)');

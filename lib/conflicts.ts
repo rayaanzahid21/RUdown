@@ -1,4 +1,5 @@
-import { attending, catalog, money, recommendation, rideOptions, type Session } from './planning';
+import {groupActivities} from './nearby';
+import { attending, money, recommendation, rideOptions, type Session } from './planning';
 
 export const reasons = {time:'The time doesn’t work',budget:'It costs too much',distance:'It’s too far away',transport:'I need transportation',activity:'This activity isn’t for me',other:'Something else'} as const;
 
@@ -7,7 +8,7 @@ export const reasons = {time:'The time doesn’t work',budget:'It costs too much
 export function rebuildSuggestions(s:Session,now=Date.now()) {
  const members=attending(s.members);
  const responses=members.flatMap(m=>s.conflicts?.[m.id]?[{member:m,...s.conflicts[m.id]}]:[]);
- const options=catalog.filter(a=>a.type===s.type).map(a=>{
+ const options=groupActivities(s.members).filter(a=>a.type===s.type).map(a=>{
   const r=recommendation(a,members);
   const blockers=[...r.issues,...r.travel.flatMap(t=>[...(t.over?[`${t.name} is ${money(t.over)} over budget.`]:[]),...(t.extra?[`${t.name} is ${t.extra.toFixed(1)} miles over their travel limit.`]:[])])];
   return {id:a.id,name:a.name,costs:r.costs,matched:r.matched,common:r.common,blockers,score:r.score,withinLimits:!blockers.length,current:a.id===s.selected};

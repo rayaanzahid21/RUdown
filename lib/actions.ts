@@ -1,4 +1,5 @@
-import { type Session, type Member, type Expense, type Conflict, attending, catalog, categories, slots, initialMember, invalidate, expensesFor, shares, recommendation, rideOptions } from './planning';
+import {groupActivities} from './nearby';
+import { type Session, type Member, type Expense, type Conflict, attending, selectedActivity, categories, slots, initialMember, invalidate, expensesFor, shares, recommendation, rideOptions } from './planning';
 export class InputError extends Error {}
 export function textValue(v:unknown,label:string,max=100):string { if(typeof v!=='string'||!v.trim()||v.length>max)throw new InputError(`${label} is required (up to ${max} characters).`);return v.trim(); }
 export function integer(v:unknown,label:string,min:number,max:number):number { if(!Number.isSafeInteger(v)||Number(v)<min||Number(v)>max)throw new InputError(`${label} must be between ${min} and ${max}.`);return Number(v); }
@@ -46,7 +47,7 @@ export function mutate(s:Session,memberId:string,action:string,p:any):Session {
   try{new Intl.DateTimeFormat('en-US',{timeZone}).format();}catch{throw new InputError('Choose a valid time zone.');}
   s.schedule={start:new Date(start).toISOString(),end:new Date(end).toISOString(),timeZone};invalidate(s);
  } else if(action==='select') {
-  owner(); const a=catalog.find(a=>a.id===p.id&&a.type===s.type);if(!a)throw new InputError('Choose a plan for this trip type.');s.selected=a.id;s.expenses=expensesFor(a,s.members);invalidate(s);
+  owner(); const a=groupActivities(s.members).find(a=>a.id===p.id&&a.type===s.type);if(!a)throw new InputError('Choose a plan for this trip type.');s.selected=a.id;s.selectedActivity=structuredClone(a);s.expenses=expensesFor(a,s.members);invalidate(s);
  } else if(action==='expense') {
   owner();if(!s.selected)throw new InputError('Select a plan first.');
   if(!Array.isArray(p.members)||!p.members.length||p.members.some((id:any)=>!attending(s.members).some(m=>m.id===id)))throw new InputError('Select the participants sharing this expense.');
@@ -63,7 +64,7 @@ export function mutate(s:Session,memberId:string,action:string,p:any):Session {
   if(!s.selected||p.version!==s.version)throw new InputError('The plan changed. Review it again before approving.');
   if(attending(s.members).some(m=>!m.ready))throw new InputError('Everyone must finish their preferences before final approval.');
   const cents=shares(s.expenses,s.members)[me.id];if(cents>me.budget)throw new InputError('This plan exceeds your budget. Change your own budget or ask the organizer to adjust costs.');
-  const a=catalog.find(a=>a.id===s.selected)!;const result=recommendation(a,s.members);const t=result.travel.find(t=>t.id===me.id)!;
+  const a=selectedActivity(s);if(!a)throw new InputError("Select an available plan first.");const result=recommendation(a,s.members);const t=result.travel.find(t=>t.id===me.id)!;
   if(t.extra>0)throw new InputError('This plan exceeds your travel limit. Update your own limit before approving.');
   if(!p.acknowledge&&result.issues.length)throw new InputError('Acknowledge the listed requirements before approving.');
   s.approvals[me.id]={version:s.version,cents};

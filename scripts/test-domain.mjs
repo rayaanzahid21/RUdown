@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import ts from 'typescript';
 const dir=new URL('../.sites-runtime/tests/',import.meta.url);mkdirSync(dir,{recursive:true});
-for(const name of ['planning','actions']){let source=readFileSync(new URL(`../lib/${name}.ts`,import.meta.url),'utf8');source=source.replace("from './planning'","from './planning.mjs'");writeFileSync(new URL(name+'.mjs',dir),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText);}
+for(const name of ['nearby','planning','actions']){let source=readFileSync(new URL(`../lib/${name}.ts`,import.meta.url),'utf8');source=source.replace("from './nearby'","from './nearby.mjs'").replace("from './planning'","from './planning.mjs'");writeFileSync(new URL(name+'.mjs',dir),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText);}
 const {shares,demoSession,catalog,expensesFor,recommendation,invalidate,approvalStatus,distance}=await import(new URL('planning.mjs',dir));
 const {mutate}=await import(new URL('actions.mjs',dir));
 let passed=0;function test(name,fn){fn();passed++;console.log('PASS '+name);}

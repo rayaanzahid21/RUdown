@@ -4,8 +4,8 @@ import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import ts from 'typescript';
 const dir=new URL('../.sites-runtime/feedback-ui/',import.meta.url);mkdirSync(dir,{recursive:true});
-for(const [name,path] of [['planning','lib/planning.ts'],['conflicts','lib/conflicts.ts'],['calendar','lib/calendar.ts'],...['UI','CalendarPanel','ConflictPanel','Plan'].map(n=>[n,`app/components/${n}.tsx`])]) {
- let source=readFileSync(new URL('../'+path,import.meta.url),'utf8').replace(/from ['"](?:\.\/|@\/lib\/)(planning|conflicts|calendar|UI|CalendarPanel|ConflictPanel)['"]/g,"from './$1.mjs'");
+for(const [name,path] of [['nearby','lib/nearby.ts'],['planning','lib/planning.ts'],['conflicts','lib/conflicts.ts'],['calendar','lib/calendar.ts'],...['UI','CalendarPanel','ConflictPanel','Plan'].map(n=>[n,`app/components/${n}.tsx`])]) {
+ let source=readFileSync(new URL('../'+path,import.meta.url),'utf8').replace(/from ['"](?:\.\/|@\/lib\/)(nearby|planning|conflicts|calendar|UI|CalendarPanel|ConflictPanel)['"]/g,"from './$1.mjs'");
  writeFileSync(new URL(name+'.mjs',dir),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText);
 }
 const {demoSession,expensesFor,catalog}=await import(new URL('planning.mjs',dir)),{default:Plan}=await import(new URL('Plan.mjs',dir));

@@ -15,6 +15,13 @@
       "when": 1791670294672,
       "tag": "0001_dry_captain_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791723736153,
+      "tag": "0002_unusual_red_wolf",
+      "breakpoints": true
     }
   ]
 }

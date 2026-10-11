@@ -3,6 +3,7 @@ import { AppPlatform } from './components/AppPlatform';
 import "./globals.css";
 import "./mobile.css";
 import "./feedback.css";
+import "./theme.css";
 
 export const metadata: Metadata = {
   title: "RUdown — Less planning. More going.",
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { width:'device-width', initialScale:1, viewportFit:'cover', themeColor:'#faf9f6' };
+export const viewport: Viewport = { width:'device-width', initialScale:1, viewportFit:'cover', themeColor:'#f5f0e7' };
 
 export default function RootLayout({
   children,

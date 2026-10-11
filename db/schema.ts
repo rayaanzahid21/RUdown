@@ -31,3 +31,13 @@ export const calendarOauth = sqliteTable('calendar_oauth', {
  browser:text('browser').notNull(),
  expires:integer('expires').notNull(),
 });
+export const cardCheckouts = sqliteTable('card_checkouts', {
+ id:text('id').primaryKey(),
+ code:text('code').notNull(),
+ member:text('member').notNull(),
+ version:integer('version').notNull(),
+ cents:integer('cents').notNull(),
+ stripeId:text('stripe_id'),
+ status:text('status').notNull().default('pending'),
+ created:integer('created').notNull(),
+});
