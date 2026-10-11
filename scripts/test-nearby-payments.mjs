@@ -5,8 +5,8 @@ import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import ts from 'typescript';
 const dir=new URL('../.sites-runtime/payment-tests/',import.meta.url);mkdirSync(dir,{recursive:true});
-function compile(name,path){const source=readFileSync(new URL(path,import.meta.url),'utf8').replace(/import \{\s*env\s*\} from 'cloudflare:workers';/,"const env=globalThis.__paymentEnv;").replace(/from ['"](?:\.\/|@\/lib\/)(local-data|planning|nearby|actions|calendar|calendar-server|card-payments)['"]/g,"from './$1.mjs'");writeFileSync(new URL(name+'.mjs',dir),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText);}
-for(const name of ['local-data','planning','nearby','actions','calendar','calendar-server','card-payments'])compile(name,`../lib/${name}.ts`);
+function compile(name,path){const source=readFileSync(new URL(path,import.meta.url),'utf8').replace(/import \{\s*env\s*\} from 'cloudflare:workers';/,"const env=globalThis.__paymentEnv;").replace(/from ['"](?:\.\/|@\/lib\/)(places-discovery|local-data|planning|nearby|actions|calendar|calendar-server|card-payments)['"]/g,"from './$1.mjs'");writeFileSync(new URL(name+'.mjs',dir),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText);}
+for(const name of ['places-discovery','local-data','planning','nearby','actions','calendar','calendar-server','card-payments'])compile(name,`../lib/${name}.ts`);
 compile('payments','../app/api/payments/route.ts');compile('PaymentOptions','../app/components/PaymentOptions.tsx');
 const sqlite=new DatabaseSync(':memory:');sqlite.exec('CREATE TABLE sessions(code TEXT PRIMARY KEY,data TEXT,revision INTEGER);');sqlite.exec(readFileSync(new URL('../drizzle/0002_unusual_red_wolf.sql',import.meta.url),'utf8'));
 const DB={prepare(sql){return{bind(...values){const statement=sqlite.prepare(sql);return{async first(){return statement.get(...values)||null;},async run(){return{meta:{changes:Number(statement.run(...values).changes)}};}};}};}};

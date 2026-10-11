@@ -3,8 +3,8 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import ts from 'typescript';
 const dir=new URL('../.sites-runtime/place-tests/',import.meta.url);mkdirSync(dir,{recursive:true});
-function compile(name,path){const source=readFileSync(new URL(path,import.meta.url),'utf8').replace(/import\s*\{\s*env\s*\}\s*from 'cloudflare:workers';/,"const env=globalThis.__placesEnv;").replace(/from ['"](?:\.\/|@\/lib\/)(local-data|planning|calendar|calendar-server|place-search)['"]/g,"from './$1.mjs'");writeFileSync(new URL(name+'.mjs',dir),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText);}
-for(const name of ['local-data','planning','calendar','calendar-server','place-search'])compile(name,`../lib/${name}.ts`);compile('route','../app/api/places/route.ts');
+function compile(name,path){const source=readFileSync(new URL(path,import.meta.url),'utf8').replace(/import\s*\{\s*env\s*\}\s*from 'cloudflare:workers';/,"const env=globalThis.__placesEnv;").replace(/from ['"](?:\.\/|@\/lib\/)(places-discovery|local-data|planning|calendar|calendar-server|place-search)['"]/g,"from './$1.mjs'");writeFileSync(new URL(name+'.mjs',dir),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText);}
+for(const name of ['places-discovery','local-data','planning','calendar','calendar-server','place-search'])compile(name,`../lib/${name}.ts`);compile('route','../app/api/places/route.ts');
 const sqlite=new DatabaseSync(':memory:');sqlite.exec('CREATE TABLE sessions(code TEXT PRIMARY KEY,data TEXT,revision INTEGER); CREATE TABLE searches(query TEXT PRIMARY KEY,data TEXT,expires INTEGER);');
 const DB={prepare(sql){return{bind(...values){const statement=sqlite.prepare(sql);return{async first(){return statement.get(...values)||null;},async run(){return{meta:{changes:Number(statement.run(...values).changes)}};}};}};}};
 globalThis.__placesEnv={DB,GEMINI_API_KEY:'test-placeholder'};

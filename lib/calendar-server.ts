@@ -1,5 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { type Session } from './planning';
+import {hydratePlace} from './places-discovery';
 import { calendarEvent, calendarReady } from './calendar';
 
 const settings=()=>env as unknown as Record<string,string>;
@@ -14,7 +15,7 @@ export function calendarConfigured() {
 export const digest=async(value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 export async function readGroup(code:string):Promise<Session> {
  const row=await calendarDb().prepare('SELECT data,revision FROM sessions WHERE code=?').bind(code).first<{data:string;revision:number}>();
- if(!row)throw new Error('Group access could not be verified.');return {...JSON.parse(row.data),revision:row.revision};
+ if(!row)throw new Error('Group access could not be verified.');return hydratePlace({...JSON.parse(row.data),revision:row.revision},settings().GOOGLE_PLACES_API_KEY);
 }
 export async function calendarMember(request:Request,code:string) {
  const s=await readGroup(code),token=request.headers.get('Authorization')?.replace(/^Bearer /,'');

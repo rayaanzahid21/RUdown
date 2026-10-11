@@ -3,12 +3,12 @@ export type TripType = 'hangout' | 'day' | 'overnight';
 export type Location = { label: string; lat: number; lng: number };
 export type Member = { localTravel?:{mode:"rutgers"|"walk"|"custom";roundTripCents:number}; allowanceCents?:number; id: string; name: string; authHash?: string; attending?: boolean; ready: boolean; location: Location; budget: number; miles: number; categories: string[]; availability: string[]; dietary: string; accessibility: string; ride: 'own' | 'offer' | 'need'; seats: number };
 export type Expense = { managed?:boolean; id: string; name: string; cents: number; basis: 'person' | 'group'; members: string[] };
-export type Activity = { rating?:{value:number;source:string;checkedOn:string}; pricing?:{checkedOn:string;source:string;note:string;campusAccess:boolean}; venueSearch?:string; localTemplate?:boolean; source?:string; id: string; name: string; area: string; location: Location; category: string; type: TripType; tagline: string; image: string; base: {name: string; cents: number; basis: 'person' | 'group'}[]; itinerary: string[]; capacity: number; slots: string[] };
+export type Activity = { googlePlaceId?:string; rating?:{value:number;source:string;checkedOn:string;provider?:string;count?:number}; pricing?:{checkedOn:string;source:string;note:string;campusAccess:boolean}; venueSearch?:string; localTemplate?:boolean; source?:string; id: string; name: string; area: string; location: Location; category: string; type: TripType; tagline: string; image: string; base: {name: string; cents: number; basis: 'person' | 'group'}[]; itinerary: string[]; capacity: number; slots: string[] };
 export type Idea = { id: string; name: string; description: string; author: string; votes: Record<string, boolean> };
 export type Ride = { driver: string; rider: string; driverAccepted: boolean; riderAccepted: boolean; version: number };
 export type Schedule = { start: string; end: string; timeZone: string };
 export type Conflict = { reason:'time'|'budget'|'distance'|'transport'|'activity'|'other'; note:string; windows:{start:string;end:string}[]; version:number };
-export type Session = { code: string; name: string; type: TripType; deadline: string; schedule?: Schedule; conflicts?:Record<string,Conflict>; owner: string; members: Member[]; selected: string | null; selectedActivity?:Activity; expenses: Expense[]; version: number; approvals: Record<string, { version: number; cents: number }>; ideas: Idea[]; rides: Ride[]; revision: number };
+export type Session = { selectedExternal?:{placeId:string;allowanceCents:number}; code: string; name: string; type: TripType; deadline: string; schedule?: Schedule; conflicts?:Record<string,Conflict>; owner: string; members: Member[]; selected: string | null; selectedActivity?:Activity; expenses: Expense[]; version: number; approvals: Record<string, { version: number; cents: number }>; ideas: Idea[]; rides: Ride[]; revision: number };
 export const attending = (members:Member[]) => members.filter(m=>m.attending!==false);
 export const categories = ['Outdoors', 'Food', 'Entertainment', 'Culture', 'Adventure'];
 export const slots = ['Morning', 'Afternoon', 'Evening'];
@@ -73,13 +73,13 @@ export function initialMember(id: string,name: string): Member { return {id,name
 export function expensesFor(activity: Activity,members: Member[]): Expense[] {
  const crew=attending(members);
  const base:Expense[]=activity.base.map((x,i)=>({...x,id:activity.pricing?`quoted-${activity.id}-${i}`:`${activity.id}-${i}`,members:crew.map(m=>m.id),...(activity.pricing?{managed:true}:{})}));
- if(!activity.pricing)return base;
+ if(!activity.pricing&&!activity.googlePlaceId)return base;
  return [...base,...crew.flatMap(m=>[
   {id:`quoted-travel-${m.id}`,name:`${m.name}: ${m.localTravel?.mode==='rutgers'?'Rutgers campus bus (published $0 fare)':m.localTravel?.mode==='walk'?'walking (no fare)':m.localTravel?.mode==='custom'?'round-trip transport (your estimate)':'transport not supplied'}`,cents:m.localTravel?.roundTripCents||0,basis:'person' as const,members:[m.id],managed:true},
   {id:`quoted-allowance-${m.id}`,name:`${m.name}: optional spending allowance (your input)`,cents:m.allowanceCents||0,basis:'person' as const,members:[m.id],managed:true},
  ])];
 }
-export function refreshPublishedExpenses(s:Session){const a=selectedActivity(s);if(a?.pricing)s.expenses=[...expensesFor(a,s.members),...s.expenses.filter(e=>!e.managed)];}
+export function refreshPublishedExpenses(s:Session){const a=selectedActivity(s);if(a?.googlePlaceId){s.expenses=[...expensesFor(a,s.members).filter(e=>e.managed),...s.expenses.filter(e=>!e.managed)];return;}if(a?.pricing)s.expenses=[...expensesFor(a,s.members),...s.expenses.filter(e=>!e.managed)];}
 export const fairnessExplanation='Plans within every person’s budget and travel limit come first. Among them, shared interests help the score and the longest straight-line journey reduces it. No one’s budget is raised automatically.';
 export function compareRecommendations(a:{feasible:boolean;score:number},b:{feasible:boolean;score:number}){return Number(b.feasible)-Number(a.feasible)||b.score-a.score;}
 export function shares(expenses: Expense[], members: Member[]): Record<string,number> {
@@ -94,7 +94,7 @@ export function recommendation(activity:Activity,members:Member[]) {
  const travel=members.map(m=>({id:m.id,name:m.name,miles:distance(m.location,activity.location),extra:Math.max(0,distance(m.location,activity.location)-m.miles),over:Math.max(0,costs[m.id]-m.budget)}));
  const common=slots.filter(s=>members.every(m=>m.availability.includes(s)));
  const issues:string[]=[];
- if(activity.pricing){for(const m of members){if(!m.localTravel)issues.push(m.name+': add a transport choice; the displayed total excludes unknown transport.');else if(m.localTravel.mode==='rutgers'&&(!activity.pricing.campusAccess||!campusOrigins.some(o=>distance(o,m.location)<0.75)))issues.push(m.name+': campus-bus access from this origin is not verified. Enter your own transport estimate.');}}
+ if(activity.pricing||activity.googlePlaceId){for(const m of members){if(!m.localTravel)issues.push(m.name+': add a transport choice; the displayed total excludes unknown transport.');else if(m.localTravel.mode==='rutgers'&&(!activity.pricing?.campusAccess||!campusOrigins.some(o=>distance(o,m.location)<0.75)))issues.push(m.name+': campus-bus access from this origin is not verified. Enter your own transport estimate.');}}
  if(members.some(m=>!m.ready))issues.push('Waiting for everyone to save their preferences.');
  if(members.length>activity.capacity)issues.push(`Demo capacity is ${activity.capacity}; your group has ${members.length}.`);
  if(!common.some(s=>activity.slots.includes(s)))issues.push('No shared availability for this itinerary.');
