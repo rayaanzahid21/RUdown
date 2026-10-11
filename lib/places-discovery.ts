@@ -1,6 +1,6 @@
 import {type Activity,type Session,type TripType,categories} from './planning';
 export const validPlaceId=(v:unknown):v is string=>typeof v==='string'&&/^[A-Za-z0-9_-]{8,200}$/.test(v);
-export const fieldMask='id,displayName,formattedAddress,location,rating,userRatingCount,googleMapsUri,types,businessStatus,currentOpeningHours,regularOpeningHours';
+export const fieldMask='id,displayName,formattedAddress,location,rating,userRatingCount,googleMapsUri,types,businessStatus,currentOpeningHours,regularOpeningHours,timeZone';
 export const discoveryTypes:Record<string,string[]>={'All vibes':['cafe','restaurant','park','museum','tourist_attraction','bowling_alley'],Food:['cafe','restaurant'],Outdoors:['park'],Adventure:['hiking_area','park'],Culture:['museum','art_gallery','tourist_attraction'],Entertainment:['movie_theater','bowling_alley','amusement_center']};
 export function placeHours(p:any):Activity['openingHours']{
  const current=p?.currentOpeningHours,regular=p?.regularOpeningHours;
@@ -8,7 +8,11 @@ export function placeHours(p:any):Activity['openingHours']{
  const upcoming=clean(current?.weekdayDescriptions),normal=clean(regular?.weekdayDescriptions);
  const openNow=typeof current?.openNow==='boolean'?current.openNow:undefined;
  if(openNow===undefined&&!upcoming.length&&!normal.length)return undefined;
- return {openNow,weekdays:upcoming.length?upcoming:normal,current:upcoming.length>0,checkedAt:new Date().toISOString()};
+ const point=(v:any)=>{const d=v?.date;if(!Number.isInteger(d?.year)||!Number.isInteger(d?.month)||!Number.isInteger(d?.day))return NaN;return Date.UTC(d.year,d.month-1,d.day,v.hour||0,v.minute||0)/60000;};
+ const periods=Array.isArray(current?.periods)?current.periods:undefined;
+ const parsed=periods?.map((p:any)=>({start:point(p.open),end:point(p.close)}));
+ const intervals=parsed?.every((p:any)=>Number.isFinite(p.start)&&Number.isFinite(p.end)&&p.end>p.start)?parsed:undefined;
+ return {timeZone:typeof p.timeZone?.id==='string'?p.timeZone.id:undefined,intervals,openNow,weekdays:upcoming.length?upcoming:normal,current:upcoming.length>0,checkedAt:new Date().toISOString()};
 }
 export function placeActivity(p:any,type:TripType,allowance:number):Activity{
  if(!validPlaceId(p?.id)||!p.displayName?.text||!Number.isFinite(p.location?.latitude)||!Number.isFinite(p.location?.longitude)||p.businessStatus==='CLOSED_PERMANENTLY'||p.businessStatus==='CLOSED_TEMPORARILY')throw new Error('This place is unavailable. Choose another venue.');

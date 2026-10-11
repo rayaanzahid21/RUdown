@@ -1,14 +1,14 @@
 import {publishedLocalPlans,campusOrigins} from './local-data';
 export type TripType = 'hangout' | 'day' | 'overnight';
 export type Location = { label: string; lat: number; lng: number };
-export type Member = { localTravel?:{mode:"rutgers"|"walk"|"custom";roundTripCents:number}; allowanceCents?:number; id: string; name: string; authHash?: string; attending?: boolean; ready: boolean; location: Location; budget: number; miles: number; categories: string[]; availability: string[]; dietary: string; accessibility: string; ride: 'own' | 'offer' | 'need'; seats: number };
+export type Member = { maxTravelMinutes?:number;travelEstimates?:Record<string,{mode:string;minutes:number;roundTripCents:number}>; localTravel?:{mode:"rutgers"|"walk"|"custom";roundTripCents:number}; allowanceCents?:number; id: string; name: string; authHash?: string; attending?: boolean; ready: boolean; location: Location; budget: number; miles: number; categories: string[]; availability: string[]; dietary: string; accessibility: string; ride: 'own' | 'offer' | 'need'; seats: number };
 export type Expense = { managed?:boolean; id: string; name: string; cents: number; basis: 'person' | 'group'; members: string[] };
-export type Activity = { openingHours?:{openNow?:boolean;weekdays:string[];current:boolean;checkedAt:string}; googlePlaceId?:string; rating?:{value:number;source:string;checkedOn:string;provider?:string;count?:number}; pricing?:{checkedOn:string;source:string;note:string;campusAccess:boolean}; venueSearch?:string; localTemplate?:boolean; source?:string; id: string; name: string; area: string; location: Location; category: string; type: TripType; tagline: string; image: string; base: {name: string; cents: number; basis: 'person' | 'group'}[]; itinerary: string[]; capacity: number; slots: string[] };
+export type Activity = { openingHours?:{timeZone?:string;intervals?:{start:number;end:number}[];openNow?:boolean;weekdays:string[];current:boolean;checkedAt:string}; googlePlaceId?:string; rating?:{value:number;source:string;checkedOn:string;provider?:string;count?:number}; pricing?:{checkedOn:string;source:string;note:string;campusAccess:boolean}; venueSearch?:string; localTemplate?:boolean; source?:string; id: string; name: string; area: string; location: Location; category: string; type: TripType; tagline: string; image: string; base: {name: string; cents: number; basis: 'person' | 'group'}[]; itinerary: string[]; capacity: number; slots: string[] };
 export type Idea = { id: string; name: string; description: string; author: string; votes: Record<string, boolean> };
 export type Ride = { driver: string; rider: string; driverAccepted: boolean; riderAccepted: boolean; version: number };
 export type Schedule = { start: string; end: string; timeZone: string };
 export type Conflict = { reason:'time'|'budget'|'distance'|'transport'|'activity'|'other'; note:string; windows:{start:string;end:string}[]; version:number };
-export type Session = { selectedExternal?:{placeId:string;allowanceCents:number}; code: string; name: string; type: TripType; deadline: string; schedule?: Schedule; conflicts?:Record<string,Conflict>; owner: string; members: Member[]; selected: string | null; selectedActivity?:Activity; expenses: Expense[]; version: number; approvals: Record<string, { version: number; cents: number }>; ideas: Idea[]; rides: Ride[]; revision: number };
+export type Session = { solanaRecipient?:string; selectedExternal?:{placeId:string;allowanceCents:number}; code: string; name: string; type: TripType; deadline: string; schedule?: Schedule; conflicts?:Record<string,Conflict>; owner: string; members: Member[]; selected: string | null; selectedActivity?:Activity; expenses: Expense[]; version: number; approvals: Record<string, { version: number; cents: number }>; ideas: Idea[]; rides: Ride[]; revision: number };
 export const attending = (members:Member[]) => members.filter(m=>m.attending!==false);
 export const categories = ['Outdoors', 'Food', 'Entertainment', 'Culture', 'Adventure'];
 export const slots = ['Morning', 'Afternoon', 'Evening'];
@@ -73,14 +73,14 @@ export function initialMember(id: string,name: string): Member { return {id,name
 export function expensesFor(activity: Activity,members: Member[]): Expense[] {
  const crew=attending(members);
  const base:Expense[]=activity.base.map((x,i)=>({...x,id:activity.pricing?`quoted-${activity.id}-${i}`:`${activity.id}-${i}`,members:crew.map(m=>m.id),...(activity.pricing?{managed:true}:{})}));
- if(!activity.pricing&&!activity.googlePlaceId)return base;
+ if(!activity.pricing&&!activity.googlePlaceId&&!crew.some(m=>m.travelEstimates?.[activity.id]))return base;
  return [...base,...crew.flatMap(m=>[
-  {id:`quoted-travel-${m.id}`,name:`${m.name}: ${m.localTravel?.mode==='rutgers'?'Rutgers campus bus (published $0 fare)':m.localTravel?.mode==='walk'?'walking (no fare)':m.localTravel?.mode==='custom'?'round-trip transport (your estimate)':'transport not supplied'}`,cents:m.localTravel?.roundTripCents||0,basis:'person' as const,members:[m.id],managed:true},
+  {id:`quoted-travel-${m.id}`,name:`${m.name}: ${m.travelEstimates?.[activity.id]?m.travelEstimates[activity.id].mode+' (your route estimate)':m.localTravel?.mode==='rutgers'?'Rutgers campus bus (published $0 fare)':m.localTravel?.mode==='walk'?'walking (no fare)':m.localTravel?.mode==='custom'?'round-trip transport (your estimate)':'transport not supplied'}`,cents:m.travelEstimates?.[activity.id]?.roundTripCents??m.localTravel?.roundTripCents??0,basis:'person' as const,members:[m.id],managed:true},
   {id:`quoted-allowance-${m.id}`,name:`${m.name}: optional spending allowance (your input)`,cents:m.allowanceCents||0,basis:'person' as const,members:[m.id],managed:true},
  ])];
 }
-export function refreshPublishedExpenses(s:Session){const a=selectedActivity(s);if(a?.googlePlaceId){s.expenses=[...expensesFor(a,s.members).filter(e=>e.managed),...s.expenses.filter(e=>!e.managed)];return;}if(a?.pricing)s.expenses=[...expensesFor(a,s.members),...s.expenses.filter(e=>!e.managed)];}
-export const fairnessExplanation='Plans within every person’s budget and travel limit come first. Among them, shared interests help the score and the longest straight-line journey reduces it. No one’s budget is raised automatically.';
+export function refreshPublishedExpenses(s:Session){const a=selectedActivity(s);if(a&&(a.googlePlaceId||(!a.pricing&&s.members.some(m=>m.travelEstimates?.[a.id])))){s.expenses=[...expensesFor(a,s.members).filter(e=>e.managed),...s.expenses.filter(e=>!e.managed)];return;}if(a?.pricing)s.expenses=[...expensesFor(a,s.members),...s.expenses.filter(e=>!e.managed)];}
+export const fairnessExplanation='Plans within every person’s budget and travel limit come first. Among them, shared interests help the score and known route times help compare travel burden. Straight-line distance is a proximity measure, not a commute estimate. No one’s budget is raised automatically.';
 export function compareRecommendations(a:{feasible:boolean;score:number},b:{feasible:boolean;score:number}){return Number(b.feasible)-Number(a.feasible)||b.score-a.score;}
 export function shares(expenses: Expense[], members: Member[]): Record<string,number> {
  const totals=Object.fromEntries(members.map(m=>[m.id,0]));
@@ -91,17 +91,17 @@ export function shares(expenses: Expense[], members: Member[]): Record<string,nu
 export function recommendation(activity:Activity,members:Member[]) {
  members=attending(members);
  const costs=shares(expensesFor(activity,members),members);
- const travel=members.map(m=>({id:m.id,name:m.name,miles:distance(m.location,activity.location),extra:Math.max(0,distance(m.location,activity.location)-m.miles),over:Math.max(0,costs[m.id]-m.budget)}));
+ const travel=members.map(m=>({id:m.id,name:m.name,miles:distance(m.location,activity.location),extra:Math.max(0,distance(m.location,activity.location)-m.miles),over:Math.max(0,costs[m.id]-m.budget),minutes:m.travelEstimates?.[activity.id]?.minutes,overMinutes:Math.max(0,(m.travelEstimates?.[activity.id]?.minutes||0)-(m.maxTravelMinutes||1440))}));
  const common=slots.filter(s=>members.every(m=>m.availability.includes(s)));
  const issues:string[]=[];
- if(activity.pricing||activity.googlePlaceId){for(const m of members){if(!m.localTravel)issues.push(m.name+': add a transport choice; the displayed total excludes unknown transport.');else if(m.localTravel.mode==='rutgers'&&(!activity.pricing?.campusAccess||!campusOrigins.some(o=>distance(o,m.location)<0.75)))issues.push(m.name+': campus-bus access from this origin is not verified. Enter your own transport estimate.');}}
+ if(activity.pricing||activity.googlePlaceId){for(const m of members){if(!m.localTravel&&!m.travelEstimates?.[activity.id])issues.push(m.name+': add a transport choice; the displayed total excludes unknown transport.');else if(!m.travelEstimates?.[activity.id]&&m.localTravel?.mode==='rutgers'&&(!activity.pricing?.campusAccess||!campusOrigins.some(o=>distance(o,m.location)<0.75)))issues.push(m.name+': campus-bus access from this origin is not verified. Enter your own transport estimate.');}}
  if(members.some(m=>!m.ready))issues.push('Waiting for everyone to save their preferences.');
  if(members.length>activity.capacity)issues.push(`Demo capacity is ${activity.capacity}; your group has ${members.length}.`);
  if(!common.some(s=>activity.slots.includes(s)))issues.push('No shared availability for this itinerary.');
  if(members.some(m=>m.dietary||m.accessibility))issues.push('Dietary / accessibility needs require venue confirmation.');
  const matched=members.filter(m=>m.categories.includes(activity.category)).length;
- const feasible=travel.every(t=>t.extra===0&&t.over===0)&&issues.length===0;
- const score=Math.round(100-(travel.reduce((s,t)=>s+t.extra*2+t.over/100,0)/Math.max(1,members.length))-Math.max(...travel.map(t=>t.miles),0)*.2-issues.length*12+matched*2);
+ const feasible=travel.every(t=>t.extra===0&&t.over===0&&t.overMinutes===0)&&issues.length===0;
+ const score=Math.round(100-(travel.every(t=>t.minutes!==undefined)?Math.max(...travel.map(t=>t.minutes||0))*.1:0)-travel.reduce((n,t)=>n+t.overMinutes,0)-(travel.reduce((s,t)=>s+t.extra*2+t.over/100,0)/Math.max(1,members.length))-Math.max(...travel.map(t=>t.miles),0)*.2-issues.length*12+matched*2);
  return {costs,travel,issues,feasible,score,matched,common};
 }
 export function approvalStatus(s:Session) { const totals=shares(s.expenses,s.members); return attending(s.members).map(m=>({member:m,cents:totals[m.id],approved:!s.conflicts?.[m.id]&&!!s.selected&&s.approvals[m.id]?.version===s.version&&s.approvals[m.id]?.cents===totals[m.id]})); }

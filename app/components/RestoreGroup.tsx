@@ -1,0 +1,8 @@
+'use client';
+import {useEffect,useState} from 'react';
+export default function RestoreGroup({onRestore}:{onRestore:(a:any,s:any)=>void}){
+ const [code,setCode]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[groups,setGroups]=useState<any[]>([]);
+ useEffect(()=>{try{setGroups(Object.values(JSON.parse(localStorage.getItem('rudown-groups')||'{}')));}catch{}},[]);
+ async function restore(value:string){setBusy(true);setError('');try{const a=JSON.parse(atob(value));if(typeof a.code!=='string'||typeof a.token!=='string'||typeof a.memberId!=='string')throw new Error('Invalid recovery code.');const r=await fetch('/api/groups?code='+encodeURIComponent(a.code),{headers:{Authorization:'Bearer '+a.token},cache:'no-store'});const d=await r.json() as any;if(!r.ok||!d.session)throw new Error('This access code is invalid or was revoked.');localStorage.setItem('rudown-auth',JSON.stringify(a));onRestore(a,d.session);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+ return <section className="panel"><h2>Return to a group</h2>{groups.map(g=><button key={g.auth.code} className="button ghost" disabled={busy} onClick={()=>restore(btoa(JSON.stringify(g.auth)))}>{g.name} · {g.auth.code}</button>)}<details><summary>Restore from a private recovery code</summary><textarea aria-label="Private recovery code" value={code} onChange={e=>setCode(e.target.value)} autoComplete="off"/><button className="button primary" disabled={busy||!code.trim()} onClick={()=>restore(code.trim())}>Restore my membership</button><p>Use the code you saved in The crew → Group access. An invitation code alone cannot restore someone’s identity.</p></details>{error&&<p role="alert">{error}</p>}</section>;
+}

@@ -5,9 +5,24 @@ export function textValue(v:unknown,label:string,max=100):string { if(typeof v!=
 export function integer(v:unknown,label:string,min:number,max:number):number { if(!Number.isSafeInteger(v)||Number(v)<min||Number(v)>max)throw new InputError(`${label} must be between ${min} and ${max}.`);return Number(v); }
 export function mutate(s:Session,memberId:string,action:string,p:any,trustedActivity?:Activity):Session {
  const me=s.members.find(m=>m.id===memberId);if(!me)throw new InputError('Join this group first.');
- if(Date.parse(s.deadline)<Date.now())throw new InputError('The planning deadline has passed. Create a new group to continue planning.');
+ if(!['reset','leave','transferOwner'].includes(action)&&Date.parse(s.deadline)<Date.now())throw new InputError('The planning deadline has passed. Create a new group to continue planning.');
  const owner=()=>{if(s.owner!==memberId)throw new InputError('Only the group organizer can change the final plan.');};
- if(action==='conflict') {
+ if(action==='reset'){
+  owner();if(p.confirm!==s.code)throw new InputError('Type the group code to confirm the reset.');
+  const deadline=Date.parse(p.deadline);if(!Number.isFinite(deadline)||deadline<Date.now()+60000||deadline>Date.now()+90*86400000)throw new InputError('Choose a new planning deadline within 90 days.');
+  s.deadline=new Date(deadline).toISOString();s.selected=null;delete s.selectedActivity;delete s.selectedExternal;delete s.schedule;s.expenses=[];s.conflicts={};invalidate(s);
+ } else if(action==='leave'){
+  if(s.owner===memberId)throw new InputError('Transfer organizer responsibility before leaving.');
+  me.attending=false;delete me.authHash;if(s.conflicts)delete s.conflicts[me.id];invalidate(s);
+ } else if(action==='transferOwner'){
+  owner();if(!s.members.some(m=>m.id===p.memberId&&m.attending!==false&&m.id!==me.id&&m.authHash))throw new InputError('Choose another active member.');s.owner=p.memberId;invalidate(s);
+ } else if(action==='recipient'){
+  owner();if(typeof p.address!=='string'||! /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(p.address))throw new InputError('Enter a Solana receiving address.');s.solanaRecipient=p.address;invalidate(s);
+ } else if(action==='travelEstimate'){
+  if(!s.selected)throw new InputError('Select a plan first.');
+  if(!['walk','bicycle','rutgers','bus','train','car','rideshare'].includes(p.mode))throw new InputError('Choose your transport mode.');
+  me.travelEstimates||={};me.travelEstimates[s.selected]={mode:p.mode,minutes:integer(p.minutes,'One-way travel minutes',0,1440),roundTripCents:integer(p.roundTripCents,'Round-trip fare in cents',0,10000000)};me.maxTravelMinutes=integer(p.maxMinutes,'Maximum one-way minutes',1,1440);refreshPublishedExpenses(s);invalidate(s);
+ } else if(action==='conflict') {
   if(me.attending===false)throw new InputError('Rejoin this trip before giving plan feedback.');
   if(!s.selected||p.version!==s.version)throw new InputError('The plan changed. Review it and send your response again.');
   if(!['time','budget','distance','transport','activity','other'].includes(p.reason))throw new InputError('Choose a reason.');
@@ -69,6 +84,7 @@ export function mutate(s:Session,memberId:string,action:string,p:any,trustedActi
   if(attending(s.members).some(m=>!m.ready))throw new InputError('Everyone must finish their preferences before final approval.');
   const cents=shares(s.expenses,s.members)[me.id];if(cents>me.budget)throw new InputError('This plan exceeds your budget. Change your own budget or ask the organizer to adjust costs.');
   const a=selectedActivity(s);if(!a)throw new InputError("Select an available plan first.");const result=recommendation(a,s.members);if((a.pricing||a.googlePlaceId)&&result.issues.some(i=>i.startsWith(me.name+': ')))throw new InputError('Confirm your transport choice and estimated cost in preferences before approving.');const t=result.travel.find(t=>t.id===me.id)!;
+  if(t.overMinutes>0)throw new InputError('This route exceeds your travel-time limit. Adjust your own estimate or limit first.');
   if(t.extra>0)throw new InputError('This plan exceeds your travel limit. Update your own limit before approving.');
   if(!p.acknowledge&&result.issues.length)throw new InputError('Acknowledge the listed requirements before approving.');
   s.approvals[me.id]={version:s.version,cents};

@@ -41,3 +41,5 @@ export const cardCheckouts = sqliteTable('card_checkouts', {
  status:text('status').notNull().default('pending'),
  created:integer('created').notNull(),
 });
+
+export const solanaContributions=sqliteTable('solana_contributions',{id:text('id').primaryKey(),code:text('code').notNull(),member:text('member').notNull(),version:integer('version').notNull(),cents:integer('cents').notNull(),lamports:integer('lamports').notNull(),sender:text('sender').notNull(),recipient:text('recipient').notNull(),memo:text('memo').notNull(),transactionData:text('transaction_data'),lastValidHeight:integer('last_valid_height'),signature:text('signature').unique(),created:integer('created').notNull()});

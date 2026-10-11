@@ -57,5 +57,5 @@ try{
 }finally{globalThis.fetch=originalFetch;}
 const {default:PaymentOptions}=await import(new URL('PaymentOptions.mjs',dir));
 const html=renderToStaticMarkup(createElement(PaymentOptions,{session:s,memberId:'you'},createElement('p',null,'Solana controls')));
-assert.ok(html.indexOf('>Solana<')<html.indexOf('Credit / debit card'));assert.match(html,/Why Solana\?/);assert.match(html,/aria-pressed="true"/);assert.match(html,/deposits, refunds, and releases are a preview/);
+assert.ok(html.indexOf('>Solana<')<html.indexOf('Credit / debit card'));assert.match(html,/Why Solana\?/);assert.match(html,/aria-pressed="true"/);assert.match(html,/refunds and releases are not automated/);
 console.log('PASS nearby locations, catalog coverage, selected-plan stability, calendar location, card auth/CSRF, test-only keys, approvals, server-priced checkout, duplicate prevention, verified receipts, Stripe failures, stale approvals and Solana-first markup');

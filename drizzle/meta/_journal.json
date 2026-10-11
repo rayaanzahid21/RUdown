@@ -22,6 +22,13 @@
       "when": 1791723736153,
       "tag": "0002_unusual_red_wolf",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791730370825,
+      "tag": "0003_colossal_blue_blade",
+      "breakpoints": true
     }
   ]
 }

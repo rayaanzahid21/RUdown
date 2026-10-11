@@ -31,4 +31,4 @@ Real groups change only their own inputs. The sample crew is explicitly labeled 
 
 ## Payments
 
-Solana wallet balance viewing uses Devnet. Escrow code is a source prototype; deposits, release and refunds remain disabled. Stripe test checkout requires `STRIPE_SECRET_KEY` and remains a separate flow. There is no combined funded balance, conversion, booking, or transfer from Stripe into Solana.
+Solana constructs and verifies direct Devnet test contributions with plan-version receipts. The escrow source remains undeployed; no automatic releases or refunds are implemented. Stripe test checkout requires `STRIPE_SECRET_KEY` and remains a separate flow. There is no combined funded balance, conversion, booking, or transfer from Stripe into Solana.
