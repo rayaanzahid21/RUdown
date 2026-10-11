@@ -17,5 +17,15 @@ result=await post({action:'schedule',code,revision:s.revision,...schedule},joine
 result=await post({action:'schedule',code,revision:s.revision,...schedule},created.token);assert.equal(result.status,200);assert.deepEqual(result.session.schedule,schedule);
 const calendar=await fetch(base+'/api/calendar?code='+code,{headers:{Authorization:'Bearer '+created.token}}).then(r=>r.json());assert.equal(calendar.configured,false);assert.equal(calendar.connected,false);
 const denied=await fetch(base+'/api/calendar?code='+code);assert.equal(denied.status,401);
+s=result.session;
+result=await post({action:'conflict',code,revision:s.revision,version:s.version,reason:'budget',budget:1200,note:'Could we do something cheaper?',windows:[]},joined.token);assert.equal(result.status,200);s=result.session;assert.equal(s.conflicts[joined.memberId].reason,'budget');assert.equal(s.members.find(m=>m.id===joined.memberId).budget,1200);assert.deepEqual(s.approvals,{});
+const aiStatus=await fetch(base+'/api/recommendations?code='+code,{headers:{Authorization:'Bearer '+created.token}}).then(r=>r.json());assert.equal(aiStatus.connected,false);
+const aiUnavailable=await fetch(base+'/api/recommendations',{method:'POST',headers:{Authorization:'Bearer '+created.token,'Content-Type':'application/json'},body:JSON.stringify({code,revision:s.revision,consent:true})});assert.equal(aiUnavailable.status,503);
+const escrowDenied=await fetch(base+'/api/escrow?code='+code);assert.equal(escrowDenied.status,401);
+const escrow=await fetch(base+'/api/escrow?code='+code,{headers:{Authorization:'Bearer '+created.token}}).then(r=>r.json());assert.equal(escrow.depositsEnabled,false);assert.equal(escrow.totalTestLamports,2000000);assert.match(escrow.planCommitment,/^[a-f0-9]{64}$/);
+result=await post({action:'resolveConflict',code,revision:s.revision},created.token);assert.equal(result.status,400);
+result=await post({action:'participation',code,revision:s.revision,attending:false},joined.token);assert.equal(result.status,200);s=result.session;assert.equal(s.members.find(m=>m.id===joined.memberId).attending,false);
+const afterWithdrawal=await fetch(base+'/api/escrow?code='+code,{headers:{Authorization:'Bearer '+created.token}}).then(r=>r.json());assert.equal(afterWithdrawal.participants.length,1);assert.notEqual(afterWithdrawal.planCommitment,escrow.planCommitment);
+console.log('PASS live conflict persistence, own-response access, missing-AI fallback, authenticated escrow preview and withdrawal');
 console.log('PASS real database: group flow, approvals, stale-write protection, member isolation, schedule authorization/persistence, unconfigured calendar state, no credential leakage.');
 console.log('QA group created in local database:',code);

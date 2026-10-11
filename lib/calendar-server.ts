@@ -56,11 +56,11 @@ export async function syncConnection(id:string) {
   const row=await readConnection(id);if(!row)return;
   let token:string|undefined;
   for(let attempt=0;attempt<3;attempt++) {
-   const s=await readGroup(row.code),ready=calendarReady(s),fingerprint=`${s.version}:${ready?'approved':'pending'}`;
+   const s=await readGroup(row.code),absent=s.members.find(m=>m.id===row.member)?.attending===false,ready=calendarReady(s)&&!absent,fingerprint=`${s.version}:${absent?'absent':ready?'approved':'pending'}`;
    if(row.synced===fingerprint)break;
    if(!ready&&!row.synced){await calendarDb().prepare("UPDATE calendar_connections SET status='waiting' WHERE id=?").bind(id).run();break;}
    token ||= (await googleToken({grant_type:'refresh_token',refresh_token:await unseal(row.refresh,id)})).access_token;
-   const body=ready?calendarEvent(s,row.member):{summary:`[Needs reapproval] RUdown · ${s.name}`,description:'This RUdown plan has changed or an approval was withdrawn. The previous date and location remain a placeholder. Open RUdown to review the current plan. This event will update when everyone approves.',status:'tentative'};
+   const body=ready?{...calendarEvent(s,row.member),transparency:'opaque'}:{summary:`[${absent?'Not attending':'Needs reapproval'}] RUdown · ${s.name}`,description:absent?'You are sitting this RUdown trip out. This event is retained as a reminder only and does not reserve your time. You can delete it in Google Calendar.':'This RUdown plan has changed or an approval was withdrawn. The previous date and location remain a placeholder. Open RUdown to review the current plan. This event will update when everyone approves.',status:'tentative',transparency:absent?'transparent':'opaque'};
    let response:Response;
    if(row.synced)response=await eventRequest(token,'PATCH','/'+row.event_id+'?sendUpdates=none',body);
    else {

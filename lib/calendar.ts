@@ -1,7 +1,7 @@
-import { approvalStatus, catalog, money, shares, type Session } from './planning';
+import { approvalStatus, attending, catalog, money, shares, type Session } from './planning';
 
 export function calendarReady(s:Session) {
- return !!s.schedule && !!s.selected && s.members.length>0 && approvalStatus(s).every(a=>a.approved);
+ return !!s.schedule && !!s.selected && attending(s.members).length>0 && approvalStatus(s).every(a=>a.approved);
 }
 export function calendarEvent(s:Session,memberId:string) {
  const activity=catalog.find(a=>a.id===s.selected);

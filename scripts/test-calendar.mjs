@@ -46,6 +46,13 @@ mutate(s,'you','schedule',{...schedule,end:new Date(Date.parse(schedule.end)+360
 await syncConnection(id);assert.equal(requests.at(-1).method,'PATCH');assert.equal(requests.at(-1).body.status,'tentative');assert.ok(!('start' in requests.at(-1).body));
 for(const m of s.members)mutate(s,m.id,'approve',{version:s.version,acknowledge:true});save();
 await syncConnection(id);assert.equal(insertCount,1);assert.equal(requests.at(-1).body.end.dateTime,s.schedule.end);
+mutate(s,'you','participation',{attending:false});save();await syncConnection(id);
+assert.match(requests.at(-1).body.summary,/Not attending/);assert.equal(requests.at(-1).body.transparency,'transparent');
+for(const m of s.members.filter(m=>m.attending!==false))mutate(s,m.id,'approve',{version:s.version,acknowledge:true});save();await syncConnection(id);
+assert.match(requests.at(-1).body.summary,/Not attending/);
+mutate(s,'you','participation',{attending:true});mutate(s,'you','select',{id:'picnic'});
+for(const m of s.members)mutate(s,m.id,'approve',{version:s.version,acknowledge:true});save();await syncConnection(id);
+assert.equal(requests.at(-1).body.status,'confirmed');assert.equal(requests.at(-1).body.transparency,'opaque');
 sqlite.prepare('UPDATE calendar_connections SET synced=NULL WHERE id=?').run(id);mode='conflict';await syncConnection(id);assert.equal(requests.at(-1).method,'PATCH');assert.equal((await readConnection(id)).status,'synced');
 sqlite.prepare('UPDATE calendar_connections SET synced=NULL,lease=? WHERE id=?').run(Date.now()+90000,id);const before=requests.length;await syncConnection(id);assert.equal(requests.length,before);
 sqlite.prepare('UPDATE calendar_connections SET lease=0 WHERE id=?').run(id);mode='failure';await syncConnection(id);assert.equal((await readConnection(id)).status,'retry');

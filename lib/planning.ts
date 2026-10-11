@@ -1,12 +1,14 @@
 export type TripType = 'hangout' | 'day' | 'overnight';
 export type Location = { label: string; lat: number; lng: number };
-export type Member = { id: string; name: string; authHash?: string; ready: boolean; location: Location; budget: number; miles: number; categories: string[]; availability: string[]; dietary: string; accessibility: string; ride: 'own' | 'offer' | 'need'; seats: number };
+export type Member = { id: string; name: string; authHash?: string; attending?: boolean; ready: boolean; location: Location; budget: number; miles: number; categories: string[]; availability: string[]; dietary: string; accessibility: string; ride: 'own' | 'offer' | 'need'; seats: number };
 export type Expense = { id: string; name: string; cents: number; basis: 'person' | 'group'; members: string[] };
 export type Activity = { id: string; name: string; area: string; location: Location; category: string; type: TripType; tagline: string; image: string; base: {name: string; cents: number; basis: 'person' | 'group'}[]; itinerary: string[]; capacity: number; slots: string[] };
 export type Idea = { id: string; name: string; description: string; author: string; votes: Record<string, boolean> };
 export type Ride = { driver: string; rider: string; driverAccepted: boolean; riderAccepted: boolean; version: number };
 export type Schedule = { start: string; end: string; timeZone: string };
-export type Session = { code: string; name: string; type: TripType; deadline: string; schedule?: Schedule; owner: string; members: Member[]; selected: string | null; expenses: Expense[]; version: number; approvals: Record<string, { version: number; cents: number }>; ideas: Idea[]; rides: Ride[]; revision: number };
+export type Conflict = { reason:'time'|'budget'|'distance'|'transport'|'activity'|'other'; note:string; windows:{start:string;end:string}[]; version:number };
+export type Session = { code: string; name: string; type: TripType; deadline: string; schedule?: Schedule; conflicts?:Record<string,Conflict>; owner: string; members: Member[]; selected: string | null; expenses: Expense[]; version: number; approvals: Record<string, { version: number; cents: number }>; ideas: Idea[]; rides: Ride[]; revision: number };
+export const attending = (members:Member[]) => members.filter(m=>m.attending!==false);
 export const categories = ['Outdoors', 'Food', 'Entertainment', 'Culture', 'Adventure'];
 export const slots = ['Morning', 'Afternoon', 'Evening'];
 export const home: Location = {label:'New Brunswick, NJ 08901',lat:40.4862,lng:-74.4518};
@@ -25,13 +27,15 @@ export const catalog: Activity[] = [
  {id:'city',name:'One night in Philadelphia',area:'Old City · Philadelphia',location:{label:'Old City, Philadelphia',lat:39.949,lng:-75.145},category:'Culture',type:'overnight',tagline:'New streets, late dinner, and a change of scenery.',image:photo('photo-1449824913935-59a10b8d2000'),base:[{name:'Demo accommodation allocation',cents:9000,basis:'person'},{name:'Meals & coffee',cents:5000,basis:'person'},{name:'Transport estimate',cents:3000,basis:'person'}],itinerary:['Day 1 · Travel and check in','Afternoon · Explore Old City','Evening · Dinner together','Day 2 · Brunch before heading back'],capacity:8,slots:['Morning','Afternoon','Evening']}
 ];
 export function initialMember(id: string,name: string): Member { return {id,name,ready:false,location:{...home},budget:5000,miles:25,categories:['Outdoors','Food'],availability:['Afternoon'],dietary:'',accessibility:'',ride:'own',seats:0}; }
-export function expensesFor(activity: Activity,members: Member[]): Expense[] { return activity.base.map((x,i)=>({...x,id:`${activity.id}-${i}`,members:members.map(m=>m.id)})); }
+export function expensesFor(activity: Activity,members: Member[]): Expense[] { return activity.base.map((x,i)=>({...x,id:`${activity.id}-${i}`,members:attending(members).map(m=>m.id)})); }
 export function shares(expenses: Expense[], members: Member[]): Record<string,number> {
  const totals=Object.fromEntries(members.map(m=>[m.id,0]));
- for(const e of expenses) { const ids=[...new Set(e.members)].filter(id=>id in totals).sort(); if(!ids.length)continue; const base=e.basis==='person'?e.cents:Math.floor(e.cents/ids.length); const remainder=e.basis==='group'?e.cents%ids.length:0; ids.forEach((id,i)=>totals[id]+=base+(i<remainder?1:0)); }
+ const active=new Set(attending(members).map(m=>m.id));
+ for(const e of expenses) { const ids=[...new Set(e.members)].filter(id=>active.has(id)).sort(); if(!ids.length)continue; const base=e.basis==='person'?e.cents:Math.floor(e.cents/ids.length); const remainder=e.basis==='group'?e.cents%ids.length:0; ids.forEach((id,i)=>totals[id]+=base+(i<remainder?1:0)); }
  return totals;
 }
 export function recommendation(activity:Activity,members:Member[]) {
+ members=attending(members);
  const costs=shares(expensesFor(activity,members),members);
  const travel=members.map(m=>({id:m.id,name:m.name,miles:distance(m.location,activity.location),extra:Math.max(0,distance(m.location,activity.location)-m.miles),over:Math.max(0,costs[m.id]-m.budget)}));
  const common=slots.filter(s=>members.every(m=>m.availability.includes(s)));
@@ -45,7 +49,7 @@ export function recommendation(activity:Activity,members:Member[]) {
  const score=Math.round(100-(travel.reduce((s,t)=>s+t.extra*2+t.over/100,0)/Math.max(1,members.length))-Math.max(...travel.map(t=>t.miles),0)*.2-issues.length*12+matched*2);
  return {costs,travel,issues,feasible,score,matched,common};
 }
-export function approvalStatus(s:Session) { const totals=shares(s.expenses,s.members); return s.members.map(m=>({member:m,cents:totals[m.id],approved:!!s.selected&&s.approvals[m.id]?.version===s.version&&s.approvals[m.id]?.cents===totals[m.id]})); }
+export function approvalStatus(s:Session) { const totals=shares(s.expenses,s.members); return attending(s.members).map(m=>({member:m,cents:totals[m.id],approved:!s.conflicts?.[m.id]&&!!s.selected&&s.approvals[m.id]?.version===s.version&&s.approvals[m.id]?.cents===totals[m.id]})); }
 export function invalidate(s:Session) { s.version++;s.approvals={};s.rides=[]; }
-export function rideOptions(s:Session) { const a=catalog.find(a=>a.id===s.selected);if(!a)return [];return s.members.filter(m=>m.ride==='need').flatMap(r=>s.members.filter(d=>d.ride==='offer'&&d.seats>0).map(d=>({driver:d,rider:r,pickup:distance(d.location,r.location),detour:Math.max(0,distance(d.location,r.location)+distance(r.location,a.location)-distance(d.location,a.location))}))).filter(x=>x.pickup<15&&x.detour<12).sort((a,b)=>a.detour-b.detour); }
+export function rideOptions(s:Session) { const a=catalog.find(a=>a.id===s.selected);if(!a)return [];return attending(s.members).filter(m=>m.ride==='need').flatMap(r=>attending(s.members).filter(d=>d.ride==='offer'&&d.seats>0).map(d=>({driver:d,rider:r,pickup:distance(d.location,r.location),detour:Math.max(0,distance(d.location,r.location)+distance(r.location,a.location)-distance(d.location,a.location))}))).filter(x=>x.pickup<15&&x.detour<12).sort((a,b)=>a.detour-b.detour); }
 export function demoSession():Session { const members=[initialMember('you','You'),initialMember('maya','Maya'),initialMember('alex','Alex'),initialMember('jordan','Jordan')];members.forEach(m=>m.ready=true);members[1].location={label:'Piscataway, NJ',lat:40.5549,lng:-74.4643};members[2].location={label:'Edison, NJ',lat:40.5187,lng:-74.4121};members[3].location={label:'Highland Park, NJ',lat:40.4959,lng:-74.4243};members[0].ride='offer';members[0].seats=3;members[2].ride='need';return {code:'DEMO',name:'The weekend crew',type:'hangout',deadline:new Date(Date.now()+86400000).toISOString(),owner:'you',members,selected:null,expenses:[],version:1,approvals:{},ideas:[{id:'demo-idea',name:'Picnic + a disposable camera',description:'Everyone brings a snack. We make a tiny photo album afterward.',author:'maya',votes:{maya:true,alex:true}}],rides:[],revision:0}; }

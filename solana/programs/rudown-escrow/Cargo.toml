@@ -1,0 +1,20 @@
+[package]
+name = "rudown-escrow"
+version = "0.1.0"
+edition = "2021"
+description = "RUdown test-fund escrow prototype; not audited or deployed"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "rudown_escrow"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = "=0.32.1"

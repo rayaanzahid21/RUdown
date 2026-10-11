@@ -7,9 +7,9 @@ export async function GET(request:Request) {
   const code=new URL(request.url).searchParams.get('code')||'',{s,member}=await calendarMember(request,code);
   if(!calendarConfigured())return reply({configured:false,connected:false});
   const row=await readConnection(connectionId(code,member.id));
-  const fingerprint=`${s.version}:${calendarReady(s)?'approved':'pending'}`;
+  const fingerprint=`${s.version}:${member.attending===false?'absent':calendarReady(s)?'approved':'pending'}`;
   const status=row&&row.synced!==fingerprint&&row.status==='synced'?'pending':row?.status;
-  return reply({configured:true,connected:!!row,status,updated:row?.updated});
+  return reply({configured:true,connected:!!row,status:member.attending===false&&status==='waiting'?'not_attending':status,updated:row?.updated});
  }catch{return reply({error:'Could not verify calendar access.'},401);}
 }
 export async function POST(request:Request) {

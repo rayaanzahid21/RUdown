@@ -55,3 +55,9 @@ next-env.d.ts
 /outputs/
 /work/
 *.tsbuildinfo
+
+/solana/target/
+/solana/node_modules/
+/solana/.anchor/
+/solana/test-ledger/
+*-keypair.json

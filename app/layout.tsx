@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { AppPlatform } from './components/AppPlatform';
 import "./globals.css";
 import "./mobile.css";
+import "./feedback.css";
 
 export const metadata: Metadata = {
   title: "RUdown — Less planning. More going.",

@@ -1,4 +1,4 @@
-import { type Session, type Member, type Expense, catalog, categories, slots, initialMember, invalidate, expensesFor, shares, recommendation, rideOptions } from './planning';
+import { type Session, type Member, type Expense, type Conflict, attending, catalog, categories, slots, initialMember, invalidate, expensesFor, shares, recommendation, rideOptions } from './planning';
 export class InputError extends Error {}
 export function textValue(v:unknown,label:string,max=100):string { if(typeof v!=='string'||!v.trim()||v.length>max)throw new InputError(`${label} is required (up to ${max} characters).`);return v.trim(); }
 export function integer(v:unknown,label:string,min:number,max:number):number { if(!Number.isSafeInteger(v)||Number(v)<min||Number(v)>max)throw new InputError(`${label} must be between ${min} and ${max}.`);return Number(v); }
@@ -6,7 +6,32 @@ export function mutate(s:Session,memberId:string,action:string,p:any):Session {
  const me=s.members.find(m=>m.id===memberId);if(!me)throw new InputError('Join this group first.');
  if(Date.parse(s.deadline)<Date.now())throw new InputError('The planning deadline has passed. Create a new group to continue planning.');
  const owner=()=>{if(s.owner!==memberId)throw new InputError('Only the group organizer can change the final plan.');};
- if(action==='preferences') {
+ if(action==='conflict') {
+  if(me.attending===false)throw new InputError('Rejoin this trip before giving plan feedback.');
+  if(!s.selected||p.version!==s.version)throw new InputError('The plan changed. Review it and send your response again.');
+  if(!['time','budget','distance','transport','activity','other'].includes(p.reason))throw new InputError('Choose a reason.');
+  const note=typeof p.note==='string'?p.note.trim():'';
+  if(note.length>600)throw new InputError('Keep your response under 600 characters.');
+  if(p.reason==='other'&&!note)throw new InputError('Tell the group what would help.');
+  if(!Array.isArray(p.windows)||p.windows.length>3)throw new InputError('Add up to three availability windows.');
+  const windows=p.windows.map((w:any)=>{const start=Date.parse(w?.start),end=Date.parse(w?.end);if(!Number.isFinite(start)||!Number.isFinite(end)||start<Date.now()||end<=start||end-start>14*86400000)throw new InputError('Availability must start in the future and end within 14 days.');return {start:new Date(start).toISOString(),end:new Date(end).toISOString()};});
+  const budget=p.reason==='budget'?integer(p.budget,'Budget in cents',0,10000000):me.budget;
+  me.budget=budget;invalidate(s);
+  s.conflicts ||= {};s.conflicts[me.id]={reason:p.reason as Conflict['reason'],note,windows,version:s.version};
+ } else if(action==='resolveConflict') {
+  if(!s.conflicts?.[me.id])throw new InputError('You have no open response.');
+  delete s.conflicts[me.id];invalidate(s);
+ } else if(action==='participation') {
+  if(typeof p.attending!=='boolean')throw new InputError('Choose whether you are joining this trip.');
+  if(p.attending===false&&attending(s.members).length===1&&me.attending!==false)throw new InputError('At least one person must stay in the trip.');
+  if((me.attending!==false)===p.attending)throw new InputError('Your attendance is already saved.');
+  me.attending=p.attending;
+  if(s.conflicts)delete s.conflicts[me.id];
+  // Retain expense membership on withdrawal, so rejoining restores the same split.
+  // Plans selected while absent did not include this person and need review first.
+  if(p.attending){s.selected=null;s.expenses=[];}
+  invalidate(s);
+ } else if(action==='preferences') {
   const loc=p.location;if(!loc||!Number.isFinite(loc.lat)||!Number.isFinite(loc.lng)||Math.abs(loc.lat)>90||Math.abs(loc.lng)>180)throw new InputError('Select a valid location from search results.');
   const validList=(v:any,allowed:string[])=>Array.isArray(v)&&v.length>0&&v.every(x=>allowed.includes(x));
   if(!validList(p.categories,categories)||!validList(p.availability,slots))throw new InputError('Choose at least one category and availability window.');
@@ -24,7 +49,7 @@ export function mutate(s:Session,memberId:string,action:string,p:any):Session {
   owner(); const a=catalog.find(a=>a.id===p.id&&a.type===s.type);if(!a)throw new InputError('Choose a plan for this trip type.');s.selected=a.id;s.expenses=expensesFor(a,s.members);invalidate(s);
  } else if(action==='expense') {
   owner();if(!s.selected)throw new InputError('Select a plan first.');
-  if(!Array.isArray(p.members)||!p.members.length||p.members.some((id:any)=>!s.members.some(m=>m.id===id)))throw new InputError('Select the participants sharing this expense.');
+  if(!Array.isArray(p.members)||!p.members.length||p.members.some((id:any)=>!attending(s.members).some(m=>m.id===id)))throw new InputError('Select the participants sharing this expense.');
   if(!['person','group'].includes(p.basis))throw new InputError('Choose how to split this expense.');
   if(s.expenses.length>=50&&!p.id)throw new InputError('This demo supports 50 expenses per plan.');
   const expense:Expense={id:p.id||crypto.randomUUID(),name:textValue(p.name,'Expense name',80),cents:integer(p.cents,'Amount in cents',0,10000000),basis:p.basis,members:[...new Set(p.members)] as string[]};
@@ -33,8 +58,10 @@ export function mutate(s:Session,memberId:string,action:string,p:any):Session {
  } else if(action==='idea') {if(s.ideas.length>=50)throw new InputError('This group already has 50 ideas.');s.ideas.push({id:crypto.randomUUID(),name:textValue(p.name,'Idea',100),description:typeof p.description==='string'?p.description.slice(0,400):'',author:me.id,votes:{[me.id]:true}});
  } else if(action==='vote') {const idea=s.ideas.find(i=>i.id===p.id);if(!idea)throw new InputError('Idea not found.');idea.votes[me.id]=!idea.votes[me.id];
  } else if(action==='approve') {
+  if(me.attending===false)throw new InputError('You are sitting this trip out.');
+  if(s.conflicts?.[me.id])throw new InputError('Mark your concern resolved before approving the revised plan.');
   if(!s.selected||p.version!==s.version)throw new InputError('The plan changed. Review it again before approving.');
-  if(s.members.some(m=>!m.ready))throw new InputError('Everyone must finish their preferences before final approval.');
+  if(attending(s.members).some(m=>!m.ready))throw new InputError('Everyone must finish their preferences before final approval.');
   const cents=shares(s.expenses,s.members)[me.id];if(cents>me.budget)throw new InputError('This plan exceeds your budget. Change your own budget or ask the organizer to adjust costs.');
   const a=catalog.find(a=>a.id===s.selected)!;const result=recommendation(a,s.members);const t=result.travel.find(t=>t.id===me.id)!;
   if(t.extra>0)throw new InputError('This plan exceeds your travel limit. Update your own limit before approving.');
