@@ -13,15 +13,18 @@ const DB={prepare(sql){return{bind(...values){const statement=sqlite.prepare(sql
 globalThis.__paymentEnv={DB};
 const {demoSession,selectedActivity,catalog}=await import(new URL('planning.mjs',dir)),{groupActivities}=await import(new URL('nearby.mjs',dir)),{mutate}=await import(new URL('actions.mjs',dir)),{digest}=await import(new URL('calendar-server.mjs',dir)),{calendarEvent}=await import(new URL('calendar.mjs',dir)),route=await import(new URL('payments.mjs',dir));
 let s=demoSession();assert.ok(catalog.length>=22);assert.ok(groupActivities(s.members).filter(a=>a.type==='hangout').length>3);
-// A far-away crew gets ideas in its own saved neighborhood, not NJ pins.
+// Unsupported areas must not fabricate local businesses or use the crew's home as a venue.
 s.members.forEach(m=>{m.location={label:'Oakland, CA',lat:37.8044,lng:-122.2712};m.miles=20;});
-const local=groupActivities(s.members);assert.equal(local.length,6);assert.ok(local.every(a=>a.localTemplate&&a.location.lng<-120));
-mutate(s,'you','select',{id:local[0].id});const savedLocation=structuredClone(selectedActivity(s).location);
+const local=groupActivities(s.members);assert.equal(local.length,0);
+s=demoSession();s.members.forEach(m=>{m.location={label:'Woodbridge NJ',lat:40.55,lng:-74.28};});
+const coffee=groupActivities(s.members).find(a=>a.id==='legrand');assert.equal(coffee.name,'LeGrand Coffee House');assert.equal(coffee.rating.value,4.6);assert.match(coffee.area,/10 Green Street/);
+assert.ok(groupActivities(s.members).every(a=>!a.localTemplate));
+mutate(s,'you','select',{id:coffee.id});const savedLocation=structuredClone(selectedActivity(s).location);
 mutate(s,'you','preferences',{...s.members[0],location:{label:'Seattle, WA',lat:47.6062,lng:-122.3321}});
 assert.deepEqual(selectedActivity(s).location,savedLocation,'selected itinerary stays pinned when origins change');
 assert.throws(()=>mutate(s,'you','select',{id:'local-forged'}),/Choose a plan/);
 s.schedule={start:new Date(Date.now()+86400000).toISOString(),end:new Date(Date.now()+90000000).toISOString(),timeZone:'America/Los_Angeles'};
-assert.ok(JSON.stringify(calendarEvent(s,'you')).includes('Oakland'));
+assert.ok(JSON.stringify(calendarEvent(s,'you')).includes('LeGrand'));
 s=demoSession();s.members[0].authHash=await digest('test-token');mutate(s,'you','select',{id:'picnic'});
 const save=()=>sqlite.prepare('INSERT INTO sessions VALUES(?,?,?) ON CONFLICT(code) DO UPDATE SET data=excluded.data,revision=excluded.revision').run(s.code,JSON.stringify(s),s.revision);save();
 const req=(body={},token='test-token',origin='https://example.test')=>new Request('https://example.test/api/payments',{method:'POST',headers:{Authorization:'Bearer '+token,Origin:origin},body:JSON.stringify({code:s.code,version:s.version,...body})});

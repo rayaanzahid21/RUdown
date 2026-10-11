@@ -3,7 +3,7 @@ export type TripType = 'hangout' | 'day' | 'overnight';
 export type Location = { label: string; lat: number; lng: number };
 export type Member = { localTravel?:{mode:"rutgers"|"walk"|"custom";roundTripCents:number}; allowanceCents?:number; id: string; name: string; authHash?: string; attending?: boolean; ready: boolean; location: Location; budget: number; miles: number; categories: string[]; availability: string[]; dietary: string; accessibility: string; ride: 'own' | 'offer' | 'need'; seats: number };
 export type Expense = { managed?:boolean; id: string; name: string; cents: number; basis: 'person' | 'group'; members: string[] };
-export type Activity = { pricing?:{checkedOn:string;source:string;note:string;campusAccess:boolean}; venueSearch?:string; localTemplate?:boolean; source?:string; id: string; name: string; area: string; location: Location; category: string; type: TripType; tagline: string; image: string; base: {name: string; cents: number; basis: 'person' | 'group'}[]; itinerary: string[]; capacity: number; slots: string[] };
+export type Activity = { rating?:{value:number;source:string;checkedOn:string}; pricing?:{checkedOn:string;source:string;note:string;campusAccess:boolean}; venueSearch?:string; localTemplate?:boolean; source?:string; id: string; name: string; area: string; location: Location; category: string; type: TripType; tagline: string; image: string; base: {name: string; cents: number; basis: 'person' | 'group'}[]; itinerary: string[]; capacity: number; slots: string[] };
 export type Idea = { id: string; name: string; description: string; author: string; votes: Record<string, boolean> };
 export type Ride = { driver: string; rider: string; driverAccepted: boolean; riderAccepted: boolean; version: number };
 export type Schedule = { start: string; end: string; timeZone: string };
@@ -39,6 +39,36 @@ export const catalog: Activity[] = [
 {"id":"shore-night","name":"A shore-town sleepover","area":"Ocean Grove · New Jersey","location":{"label":"Ocean Grove · New Jersey","lat":40.213,"lng":-74.008},"category":"Outdoors","type":"overnight","tagline":"A little change of scenery, with room for the whole crew.","image":"https://images.unsplash.com/photo-1473116763249-2faaef81ccda?auto=format&fit=crop&w=1000&q=85","base":[{"name":"Lodging, food and transport allowance","cents":18000,"basis":"person"}],"itinerary":["Check lodging availability, seasonal access, and transport","Explore town and plan dinner together","Take a morning boardwalk walk before heading home"],"capacity":12,"slots":["Morning","Afternoon","Evening"],"venueSearch":"https://www.google.com/maps/search/?api=1&query=Ocean%20Grove%20%C2%B7%20New%20Jersey"}
 ];
 catalog.push(...publishedLocalPlans);
+// Stable IDs retain existing group links; new selections use specific destinations.
+const venues:Record<string,{name:string;address?:string;lat?:number;lng?:number;source?:string}>={
+ picnic:{name:'Rutgers Gardens picnic',address:'130 Log Cabin Road, New Brunswick, NJ',source:'https://www.rutgersgardens.rutgers.edu/visit'},
+ ramen:{name:'Ramen Nagomi',address:'49 Bayard Street, New Brunswick, NJ',lat:40.4949,lng:-74.4442,source:'https://ramennagomi.com/new-brunswick/'},
+ arcade:{name:'Dave & Buster’s Woodbridge',address:'274 Woodbridge Center Drive, Woodbridge, NJ',lat:40.556,lng:-74.299,source:'https://www.daveandbusters.com/us/en/about/locations/woodbridge-middlesex'},
+ metuchen:{name:'Hatch44 Cafe',address:'25 New Street, Metuchen, NJ 08840',lat:40.5419,lng:-74.3632,source:'https://www.hatch44cafe.com/online-menu-2'},
+ zimmerli:{name:'Zimmerli Art Museum & coffee'},donaldson:{name:'Donaldson Park'},johnson:{name:'Johnson Park'},roosevelt:{name:'Roosevelt Park'},
+ duke:{name:'Duke Farms'},greenway:{name:'Middlesex Greenway'},raritan:{name:'Raritan Bay Waterfront Park'},hike:{name:'Sourland Mountain Preserve'},shore:{name:'Asbury Park Boardwalk'},
+ princeton:{name:'Princeton University & downtown walk'},redbank:{name:'Red Bank downtown & riverfront'},
+ cabin:{name:'The Shawnee Inn and Golf Resort',address:'100 Shawnee Inn Drive, Shawnee on Delaware, PA 18356',lat:41.0063931,lng:-75.1106168,source:'https://www.shawneeinn.com/about-us'},
+ city:{name:'Club Quarters Hotel, Rittenhouse Square',address:'1628 Chestnut Street, Philadelphia, PA 19103',lat:39.9515,lng:-75.1683,source:'https://www.clubquartershotels.com/philadelphia/rittenhouse-square'},
+ 'shore-night':{name:'The Asbury Hotel',address:'210 5th Avenue, Asbury Park, NJ 07712',lat:40.2234,lng:-74.0022,source:'https://www.theasburyhotel.com/contact-us'}
+};
+for(const a of catalog){
+ const v=venues[a.id];if(!v)continue;
+ a.name=v.name;a.image='';if(v.address){a.area=v.address;a.location={label:v.address,lat:v.lat??a.location.lat,lng:v.lng??a.location.lng};}
+ if(v.source)a.source=v.source;
+ a.venueSearch='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(a.name+' '+a.area);
+ a.tagline=a.type==='overnight'?'A specific hotel to consider. The amount is a planning allowance, not a room quote; check dates, occupancy, taxes and availability.':'A named destination near the crew. Check current hours and costs with the venue before approving.';
+ if(a.type==='overnight'){
+  a.base=a.base.map(x=>({...x,name:x.name.includes('Demo')?'Lodging allowance — not a verified room rate':x.name}));
+  a.itinerary=['Check room availability, guest capacity, taxes and cancellation terms on the hotel website','Replace the allowance with an actual quote before approving','Agree on transport and plans around the hotel'];
+ }
+}
+// The old Lambertville template has no verified accommodation; exclude new selections.
+catalog.splice(catalog.findIndex(a=>a.id==='lambertville'),1);
+catalog.find(a=>a.id==='ramen')!.itinerary=['Meet at Ramen Nagomi, 49 Bayard Street','Check the menu and dietary requirements; order dinner','Take a downtown walk if everyone is available'];
+catalog.find(a=>a.id==='metuchen')!.itinerary=['Meet at Hatch44 Cafe, 25 New Street','Choose coffee and a snack from the current menu','Confirm seating, closing time and any group service charge'];
+catalog.find(a=>a.id==='metuchen')!.rating={value:4.7,source:'https://restaurantguru.com/Hatch-44-Cafe-Metuchen-2',checkedOn:'2026-10-11'};
+catalog.push({id:'legrand',name:'LeGrand Coffee House',area:'10 Green Street, Woodbridge, NJ 07095',location:{label:'LeGrand Coffee House, 10 Green Street, Woodbridge, NJ',lat:40.5549,lng:-74.2777},category:'Food',type:'hangout',tagline:'Coffee and a catch-up at a specific Woodbridge café. The $12 is a food/drink allowance, not a quoted menu price; confirm transport separately.',image:'',base:[{name:'Coffee and snack allowance — confirm menu and transport',cents:1200,basis:'person'}],itinerary:['Meet at LeGrand Coffee House, 10 Green Street','Check today’s menu and seating for your group','Order coffee and a snack within your allowance'],capacity:12,slots:['Morning','Afternoon'],source:'https://legrandcoffeehouse.com/',venueSearch:'https://www.google.com/maps/search/?api=1&query=LeGrand+Coffee+House+10+Green+Street+Woodbridge+NJ',rating:{value:4.6,source:'https://restaurantguru.com/LeGrand-Coffee-House-Woodbridge-Township',checkedOn:'2026-10-11'}});
 export function initialMember(id: string,name: string): Member { return {id,name,ready:false,location:{...home},budget:5000,miles:25,categories:['Outdoors','Food'],availability:['Afternoon'],dietary:'',accessibility:'',ride:'own',seats:0}; }
 export function expensesFor(activity: Activity,members: Member[]): Expense[] {
  const crew=attending(members);
