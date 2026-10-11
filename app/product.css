@@ -9,3 +9,14 @@
 .venue-image{position:relative;overflow:hidden;min-height:220px;width:100%}.venue-image>.venue-art{height:100%;min-height:220px}.venue-real-photo{position:absolute!important;inset:0;width:100%!important;height:100%!important;object-fit:cover;opacity:0}.has-photo .venue-real-photo{opacity:1}.venue-photo-credit{position:absolute;z-index:6;bottom:0;left:0;right:0;padding:7px 10px;background:rgba(255,253,248,.96);color:#1f1f1f;font:12px/1.5 Arial,sans-serif;max-height:40%;overflow:auto;text-align:left}.venue-photo-credit a{color:#1f1f1f;text-decoration:underline}.venue-photo-credit .maps-attribution{font-size:12px}.card-photo .venue-image{height:100%}.photo-open{position:absolute;inset:0;z-index:4;background:transparent;border:0;cursor:pointer}.photo-open:focus-visible{outline:3px solid #244661;outline-offset:-4px}.card-photo .photo-badge,.card-photo .save-circle{z-index:5;pointer-events:none}.selected-hero>.venue-image{height:240px}.detail-content>.venue-image{height:280px;border-radius:14px}
 .card-photo .venue-image{min-height:0}.card-photo .venue-image>.venue-art{min-height:100%}.selected-hero>.venue-image{position:absolute;inset:0;height:100%;color:inherit}.selected-hero>.venue-image+.selected-caption{z-index:2;bottom:52px;pointer-events:none;text-shadow:0 1px 5px #000}.selected-hero .venue-real-photo{filter:brightness(.65)}
 .discovery-live-controls{padding:16px;background:#f2eee4;border-radius:10px;margin:12px 0;display:flex;gap:14px;align-items:center;flex-wrap:wrap}.discovery-live-controls label{font-size:13px;display:grid;gap:5px}.discovery-live-controls input{width:100px;padding:9px}.discovery-live-controls p{font-size:12px;max-width:320px}.discovered-map iframe{width:100%;height:310px;border:0}.map-venue-buttons{display:grid;gap:6px;max-height:220px;overflow:auto;padding:8px}.map-venue-buttons button{text-align:left;padding:9px;background:#f4f0e8;border:1px solid #dfd6c7;border-radius:6px}.map-venue-buttons button[aria-pressed=true]{background:#244661;color:white}
+
+.venue-hours{margin:14px 0;padding:14px 16px;border:1px solid #dfd7c9;border-radius:12px;background:#fbf8f1;color:#344c62;font-size:13px}
+.venue-hours.compact{padding:10px 12px;font-size:12px}
+.venue-hours-status,.venue-hours-missing{display:flex;align-items:center;gap:6px;line-height:1.5}
+.venue-hours .venue-hours-status{font-weight:600;margin:0 0 6px}
+.venue-hours .is-open{color:#236344}.venue-hours .is-closed{color:#8c4b2b}
+.venue-hours details summary{cursor:pointer;padding:4px 0;text-decoration:underline;text-underline-offset:3px}
+.venue-hours ul{list-style:none;padding:0;margin:8px 0;display:grid;gap:5px}
+.venue-hours small{display:block;margin-top:8px;font-size:11px;line-height:1.5;color:#637383}
+.venue-hours p{line-height:1.5;margin:8px 0}.venue-hours-missing{font-size:12px;color:#637383;margin:12px 0}
+.venue-hours-missing svg,.venue-hours-status svg{flex-shrink:0}

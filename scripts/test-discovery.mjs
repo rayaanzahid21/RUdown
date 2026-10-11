@@ -8,8 +8,14 @@ for(const n of ['venue-search','places-discovery','local-data','nearby','plannin
 const sqlite=new DatabaseSync(':memory:');sqlite.exec('CREATE TABLE sessions(code TEXT PRIMARY KEY,data TEXT,revision INTEGER,created INTEGER);CREATE TABLE searches(query TEXT PRIMARY KEY,data TEXT,expires INTEGER);');
 const DB={prepare(sql){return{bind(...values){const statement=sqlite.prepare(sql);return{async first(){return statement.get(...values)||null;},async run(){return{meta:{changes:Number(statement.run(...values).changes)}};}};}};}};
 globalThis.__discoveryEnv={DB,GOOGLE_PLACES_API_KEY:'fixture'};
-const {demoSession}=await import(new URL('planning.mjs',dir)),{digest}=await import(new URL('calendar-server.mjs',dir)),{mutate}=await import(new URL('actions.mjs',dir)),route=await import(new URL('route.mjs',dir)),groups=await import(new URL('groups.mjs',dir)),{placeActivity,storedSession}=await import(new URL('places-discovery.mjs',dir));
-const provider={id:'ChIJ_fixture',displayName:{text:'A real fixture café'},formattedAddress:'10 Test St',location:{latitude:40.55,longitude:-74.28},rating:4.7,userRatingCount:400,types:['cafe'],businessStatus:'OPERATIONAL'};
+const {demoSession}=await import(new URL('planning.mjs',dir)),{digest}=await import(new URL('calendar-server.mjs',dir)),{mutate}=await import(new URL('actions.mjs',dir)),route=await import(new URL('route.mjs',dir)),groups=await import(new URL('groups.mjs',dir)),{placeActivity,placeHours,storedSession}=await import(new URL('places-discovery.mjs',dir));
+const provider={id:'ChIJ_fixture',displayName:{text:'A real fixture café'},formattedAddress:'10 Test St',location:{latitude:40.55,longitude:-74.28},rating:4.7,userRatingCount:400,types:['cafe'],businessStatus:'OPERATIONAL',currentOpeningHours:{openNow:true,weekdayDescriptions:['Monday: Open 24 hours']}};
+assert.equal(placeHours({}),undefined);
+assert.equal(placeHours({currentOpeningHours:{openNow:false}}).openNow,false);
+assert.deepEqual(placeHours({currentOpeningHours:{openNow:true,weekdayDescriptions:['Sunday: Closed']},regularOpeningHours:{weekdayDescriptions:['Sunday: 9 AM–5 PM']}}).weekdays,['Sunday: Closed']);
+assert.equal(placeHours({regularOpeningHours:{weekdayDescriptions:['Monday: Open 24 hours']}}).current,false);
+assert.equal(placeHours({regularOpeningHours:{weekdayDescriptions:['Monday: Open 24 hours']}}).openNow,undefined);
+assert.equal(placeHours({currentOpeningHours:{weekdayDescriptions:[null,42]}}),undefined);
 const a=placeActivity(provider,'hangout',1500);assert.equal(a.category,'Food');assert.equal(a.rating.provider,'Google Maps');assert.equal(a.base[0].cents,1500);assert.throws(()=>placeActivity({...provider,businessStatus:'CLOSED_PERMANENTLY'},'hangout',0));
 const s=demoSession();s.members[0].authHash=await digest('fixture-token');const origins=structuredClone(s.members.map(m=>m.location));assert.throws(()=>mutate(structuredClone(s),'you','select',{id:a.id}),/Choose a plan/);
 sqlite.prepare('INSERT INTO sessions VALUES(?,?,?,?)').run(s.code,JSON.stringify(s),s.revision,Date.now());
@@ -24,7 +30,7 @@ try{
  status=429;r=await route.GET(new Request('https://test/api/discover?lat=40&lng=-74'));assert.equal(r.status,429);assert.match((await r.json()).error,/Google Places returned/);status=200;
  const req=(p={})=>new Request('https://test/api/groups',{method:'POST',headers:{Authorization:'Bearer fixture-token',Origin:'https://test'},body:JSON.stringify({code:s.code,revision:s.revision,action:'select',id:a.id,allowanceCents:1500,...p})});
  r=await groups.POST(req({allowanceCents:-1}));assert.equal(r.status,400);
- r=await groups.POST(req());assert.equal(r.status,200);const selected=(await r.json()).session;assert.equal(selected.selectedActivity.name,provider.displayName.text);assert.deepEqual(selected.members.map(m=>m.location),origins);
+ r=await groups.POST(req());assert.equal(r.status,200);const selected=(await r.json()).session;assert.equal(selected.selectedActivity.name,provider.displayName.text);assert.equal(selected.selectedActivity.openingHours.openNow,true);assert.deepEqual(selected.members.map(m=>m.location),origins);
  const saved=JSON.parse(sqlite.prepare('SELECT data FROM sessions WHERE code=?').get(s.code).data);assert.equal(saved.selectedExternal.placeId,provider.id);assert.equal(saved.selectedActivity,undefined);assert.ok(!JSON.stringify(saved).includes(provider.displayName.text));
  r=await groups.GET(new Request('https://test/api/groups?code='+s.code,{headers:{Authorization:'Bearer fixture-token'}}));assert.equal((await r.json()).session.selectedActivity.name,provider.displayName.text);
  status=403;r=await route.GET(new Request('https://test/api/discover?lat=40&lng=-74&category=Food&type=hangout&allowance=1500'));assert.equal(r.status,502);
