@@ -4,6 +4,7 @@ import "./globals.css";
 import "./mobile.css";
 import "./feedback.css";
 import "./theme.css";
+import "./product.css";
 
 export const metadata: Metadata = {
   title: "RUdown — Less planning. More going.",

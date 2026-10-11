@@ -1,6 +1,10 @@
 # RUdown
 
-**Less planning. More going.** A React + TypeScript + Tailwind hackathon app for agreeing on a group hangout, day trip, or overnight getaway.
+**Find a plan your whole group can afford.** A React + TypeScript + Tailwind hackathon app for agreeing on a group hangout, day trip, or overnight getaway.
+
+Live app: https://rudown.rayaanzahid06.chatgpt.site
+
+The landing page contains the actual interactive planner. Change an individual budget, origin, transport choice or optional allowance to recalculate costs and recommendations. [Demo walkthrough, price sources, algorithm and limitations](docs/LOCAL-DEMO.md).
 
 **Install on iPhone or Android:** open the hosted site on your phone and tap **Install app**. See [mobile installation and limits](docs/MOBILE.md). This is an installable web app with home-screen icons and mobile navigation.
 
@@ -20,6 +24,7 @@ npm run db:generate  # only after schema changes; initial migration is already c
 npm run build
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_nebulous_komodo.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_dry_captain_stacy.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_unusual_red_wolf.sql
 npm run dev
 ```
 
@@ -43,7 +48,7 @@ Keep future credentials in server runtime variables, never frontend code. There 
 - Database-backed groups with invite codes, deadlines, display names, and six-second update polling.
 - Participant-specific bearer credentials stored on the device; only SHA-256 credential hashes are stored server-side. API responses exclude hashes.
 - Personal budget, approximate location, travel limits, categories, time-of-day availability, dietary/accessibility needs, and ride preferences.
-- Eight seeded plans covering hangouts, day trips, and overnight stays in New Jersey and nearby destinations.
+- Published-price Rutgers Cinema, Zimmerli, Geology Museum and Rutgers Gardens plans, plus broader estimated itineraries and local templates generated from saved group locations. Published rates and user allowances are labeled separately.
 - Live ZIP-code / city / place search via Photon, cached for 24 hours; interactive map with participant and activity pins.
 - Deterministic scoring using every participant's estimated travel burden, budget, availability, category preferences, and demo capacity. Unverified requirements are visible.
 - “What if” explanations identify the individual budget increase or travel-limit increase needed. Only the participant can change their own limits.
@@ -57,7 +62,7 @@ Keep future credentials in server runtime variables, never frontend code. There 
 
 ## Solana: exact status
 
-The app **does not implement or deploy an escrow program**. Deposits, payment releases, withdrawals, and refunds are disabled. No transaction is constructed or signed. A planning approval is stored in D1; it is not an on-chain spending authorization. The wallet screen says this explicitly.
+The repository includes an **undeployed escrow source prototype** in `solana/`. Deposits, payment releases, withdrawals, and refunds are disabled in the app. No transaction is constructed or signed. A planning approval is stored in D1; it is not an on-chain spending authorization. The wallet screen says this explicitly. Stripe card checkout is a separate test flow; see [card setup](docs/CARD-PAYMENTS.md).
 
 To try the implemented wallet flow:
 

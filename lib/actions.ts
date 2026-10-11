@@ -1,5 +1,5 @@
 import {groupActivities} from './nearby';
-import { type Session, type Member, type Expense, type Conflict, attending, selectedActivity, categories, slots, initialMember, invalidate, expensesFor, shares, recommendation, rideOptions } from './planning';
+import { type Session, type Member, type Expense, type Conflict, attending, selectedActivity, refreshPublishedExpenses, categories, slots, initialMember, invalidate, expensesFor, shares, recommendation, rideOptions } from './planning';
 export class InputError extends Error {}
 export function textValue(v:unknown,label:string,max=100):string { if(typeof v!=='string'||!v.trim()||v.length>max)throw new InputError(`${label} is required (up to ${max} characters).`);return v.trim(); }
 export function integer(v:unknown,label:string,min:number,max:number):number { if(!Number.isSafeInteger(v)||Number(v)<min||Number(v)>max)throw new InputError(`${label} must be between ${min} and ${max}.`);return Number(v); }
@@ -37,8 +37,11 @@ export function mutate(s:Session,memberId:string,action:string,p:any):Session {
   const validList=(v:any,allowed:string[])=>Array.isArray(v)&&v.length>0&&v.every(x=>allowed.includes(x));
   if(!validList(p.categories,categories)||!validList(p.availability,slots))throw new InputError('Choose at least one category and availability window.');
   if(!['own','offer','need'].includes(p.ride))throw new InputError('Choose a ride preference.');
+  let localTravel=me.localTravel;
+  if(p.localTravel!==undefined){if(!p.localTravel||!['rutgers','walk','custom'].includes(p.localTravel.mode))throw new InputError('Choose a valid transport mode.');const cents=integer(p.localTravel.roundTripCents,'Round-trip transport',0,10000000);if(p.localTravel.mode!=='custom'&&cents!==0)throw new InputError('Walking and Rutgers bus fares must be zero.');localTravel={mode:p.localTravel.mode,roundTripCents:cents};}
+  const allowanceCents=p.allowanceCents===undefined?(me.allowanceCents||0):integer(p.allowanceCents,'Optional allowance',0,10000000);
   const safe:Partial<Member>={name:textValue(p.name,'Display name',40),location:{label:textValue(loc.label,'Location',200),lat:loc.lat,lng:loc.lng},budget:integer(p.budget,'Budget in cents',0,10000000),miles:integer(p.miles,'Travel limit',1,3000),categories:[...new Set(p.categories)] as string[],availability:[...new Set(p.availability)] as string[],dietary:typeof p.dietary==='string'?p.dietary.slice(0,250):'',accessibility:typeof p.accessibility==='string'?p.accessibility.slice(0,250):'',ride:p.ride,seats:p.ride==='offer'?integer(p.seats,'Passenger seats',1,8):0,ready:true};
-  Object.assign(me,safe);invalidate(s);
+  Object.assign(me,safe,{localTravel,allowanceCents});refreshPublishedExpenses(s);invalidate(s);
  } else if(action==='schedule') {
   owner();
   const start=Date.parse(p.start),end=Date.parse(p.end);
@@ -52,10 +55,11 @@ export function mutate(s:Session,memberId:string,action:string,p:any):Session {
   owner();if(!s.selected)throw new InputError('Select a plan first.');
   if(!Array.isArray(p.members)||!p.members.length||p.members.some((id:any)=>!attending(s.members).some(m=>m.id===id)))throw new InputError('Select the participants sharing this expense.');
   if(!['person','group'].includes(p.basis))throw new InputError('Choose how to split this expense.');
+  if(p.id&&s.expenses.some(e=>e.id===p.id&&e.managed))throw new InputError('Update your transport or allowance in preferences. Published admission comes from the venue.');
   if(s.expenses.length>=50&&!p.id)throw new InputError('This demo supports 50 expenses per plan.');
   const expense:Expense={id:p.id||crypto.randomUUID(),name:textValue(p.name,'Expense name',80),cents:integer(p.cents,'Amount in cents',0,10000000),basis:p.basis,members:[...new Set(p.members)] as string[]};
   const i=s.expenses.findIndex(e=>e.id===expense.id);if(i<0)s.expenses.push(expense);else s.expenses[i]=expense;invalidate(s);
- } else if(action==='removeExpense') {owner();s.expenses=s.expenses.filter(e=>e.id!==p.id);invalidate(s);
+ } else if(action==='removeExpense') {owner();if(s.expenses.some(e=>e.id===p.id&&e.managed))throw new InputError('Published costs are managed. Change your preferences or select another plan.');s.expenses=s.expenses.filter(e=>e.id!==p.id);invalidate(s);
  } else if(action==='idea') {if(s.ideas.length>=50)throw new InputError('This group already has 50 ideas.');s.ideas.push({id:crypto.randomUUID(),name:textValue(p.name,'Idea',100),description:typeof p.description==='string'?p.description.slice(0,400):'',author:me.id,votes:{[me.id]:true}});
  } else if(action==='vote') {const idea=s.ideas.find(i=>i.id===p.id);if(!idea)throw new InputError('Idea not found.');idea.votes[me.id]=!idea.votes[me.id];
  } else if(action==='approve') {
@@ -64,7 +68,7 @@ export function mutate(s:Session,memberId:string,action:string,p:any):Session {
   if(!s.selected||p.version!==s.version)throw new InputError('The plan changed. Review it again before approving.');
   if(attending(s.members).some(m=>!m.ready))throw new InputError('Everyone must finish their preferences before final approval.');
   const cents=shares(s.expenses,s.members)[me.id];if(cents>me.budget)throw new InputError('This plan exceeds your budget. Change your own budget or ask the organizer to adjust costs.');
-  const a=selectedActivity(s);if(!a)throw new InputError("Select an available plan first.");const result=recommendation(a,s.members);const t=result.travel.find(t=>t.id===me.id)!;
+  const a=selectedActivity(s);if(!a)throw new InputError("Select an available plan first.");const result=recommendation(a,s.members);if(a.pricing&&result.issues.some(i=>i.startsWith(me.name+': ')))throw new InputError('Confirm your transport choice and estimated cost in preferences before approving.');const t=result.travel.find(t=>t.id===me.id)!;
   if(t.extra>0)throw new InputError('This plan exceeds your travel limit. Update your own limit before approving.');
   if(!p.acknowledge&&result.issues.length)throw new InputError('Acknowledge the listed requirements before approving.');
   s.approvals[me.id]={version:s.version,cents};

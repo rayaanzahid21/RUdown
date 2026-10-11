@@ -10,8 +10,8 @@ if(process.argv.includes('--models')){
  const data=await response.json();console.log(JSON.stringify({status:response.status,models:data.models?.filter(m=>m.supportedGenerationMethods?.includes('generateContent')).map(m=>m.name),error:data.error?.status}));process.exit(response.ok?0:1);
 }
 const dir=new URL('../.sites-runtime/gemini-live/',import.meta.url);mkdirSync(dir,{recursive:true});
-function compile(name,path){const source=readFileSync(new URL(path,import.meta.url),'utf8').replace("import { env } from 'cloudflare:workers';","const env=globalThis.__geminiTestEnv;").replace(/from ['"](?:\.\/|@\/lib\/)(nearby|planning|conflicts|actions|calendar|calendar-server)['"]/g,"from './$1.mjs'");writeFileSync(new URL(name+'.mjs',dir),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText);}
-for(const name of ['nearby','planning','conflicts','actions','calendar','calendar-server'])compile(name,`../lib/${name}.ts`);
+function compile(name,path){const source=readFileSync(new URL(path,import.meta.url),'utf8').replace("import { env } from 'cloudflare:workers';","const env=globalThis.__geminiTestEnv;").replace(/from ['"](?:\.\/|@\/lib\/)(local-data|nearby|planning|conflicts|actions|calendar|calendar-server)['"]/g,"from './$1.mjs'");writeFileSync(new URL(name+'.mjs',dir),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText);}
+for(const name of ['local-data','nearby','planning','conflicts','actions','calendar','calendar-server'])compile(name,`../lib/${name}.ts`);
 compile('recommendations','../app/api/recommendations/route.ts');
 const sqlite=new DatabaseSync(':memory:');sqlite.exec('CREATE TABLE sessions(code TEXT PRIMARY KEY,data TEXT,revision INTEGER);CREATE TABLE searches(query TEXT PRIMARY KEY,data TEXT,expires INTEGER);');
 const DB={prepare(sql){return{bind(...values){const stmt=sqlite.prepare(sql);return{async first(){return stmt.get(...values)||null;},async run(){return{meta:{changes:Number(stmt.run(...values).changes)}};}};}};}};

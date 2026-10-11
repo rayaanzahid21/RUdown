@@ -5,14 +5,14 @@ import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import ts from 'typescript';
 const dir=new URL('../.sites-runtime/payment-tests/',import.meta.url);mkdirSync(dir,{recursive:true});
-function compile(name,path){const source=readFileSync(new URL(path,import.meta.url),'utf8').replace(/import \{\s*env\s*\} from 'cloudflare:workers';/,"const env=globalThis.__paymentEnv;").replace(/from ['"](?:\.\/|@\/lib\/)(planning|nearby|actions|calendar|calendar-server|card-payments)['"]/g,"from './$1.mjs'");writeFileSync(new URL(name+'.mjs',dir),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText);}
-for(const name of ['planning','nearby','actions','calendar','calendar-server','card-payments'])compile(name,`../lib/${name}.ts`);
+function compile(name,path){const source=readFileSync(new URL(path,import.meta.url),'utf8').replace(/import \{\s*env\s*\} from 'cloudflare:workers';/,"const env=globalThis.__paymentEnv;").replace(/from ['"](?:\.\/|@\/lib\/)(local-data|planning|nearby|actions|calendar|calendar-server|card-payments)['"]/g,"from './$1.mjs'");writeFileSync(new URL(name+'.mjs',dir),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText);}
+for(const name of ['local-data','planning','nearby','actions','calendar','calendar-server','card-payments'])compile(name,`../lib/${name}.ts`);
 compile('payments','../app/api/payments/route.ts');compile('PaymentOptions','../app/components/PaymentOptions.tsx');
 const sqlite=new DatabaseSync(':memory:');sqlite.exec('CREATE TABLE sessions(code TEXT PRIMARY KEY,data TEXT,revision INTEGER);');sqlite.exec(readFileSync(new URL('../drizzle/0002_unusual_red_wolf.sql',import.meta.url),'utf8'));
 const DB={prepare(sql){return{bind(...values){const statement=sqlite.prepare(sql);return{async first(){return statement.get(...values)||null;},async run(){return{meta:{changes:Number(statement.run(...values).changes)}};}};}};}};
 globalThis.__paymentEnv={DB};
 const {demoSession,selectedActivity,catalog}=await import(new URL('planning.mjs',dir)),{groupActivities}=await import(new URL('nearby.mjs',dir)),{mutate}=await import(new URL('actions.mjs',dir)),{digest}=await import(new URL('calendar-server.mjs',dir)),{calendarEvent}=await import(new URL('calendar.mjs',dir)),route=await import(new URL('payments.mjs',dir));
-let s=demoSession();assert.equal(catalog.length,19);assert.ok(groupActivities(s.members).filter(a=>a.type==='hangout').length>3);
+let s=demoSession();assert.ok(catalog.length>=22);assert.ok(groupActivities(s.members).filter(a=>a.type==='hangout').length>3);
 // A far-away crew gets ideas in its own saved neighborhood, not NJ pins.
 s.members.forEach(m=>{m.location={label:'Oakland, CA',lat:37.8044,lng:-122.2712};m.miles=20;});
 const local=groupActivities(s.members);assert.equal(local.length,6);assert.ok(local.every(a=>a.localTemplate&&a.location.lng<-120));
