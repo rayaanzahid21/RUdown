@@ -4,6 +4,19 @@ Group outing planning with individual budgets, real venue discovery, explicit ap
 
 Live site: https://rudown.rayaanzahid06.chatgpt.site (public). GitHub: https://github.com/rayaanzahid21/RUdown
 
+## Screenshots
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/217391e0-c6f4-4ad8-af22-b9ebe9952b55" />
+
+### Discover activities
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/d8f2b924-b24f-4514-93ca-d18426d3843c" />
+
+### Compare individual budgets
+<img width="1916" height="1075" alt="image" src="https://github.com/user-attachments/assets/c2374b24-6bbe-44ad-bfab-dfb64db5bc33" />
+
+
+### Resolve planning conflicts
+<img width="1919" height="1075" alt="image" src="https://github.com/user-attachments/assets/4d439fed-dce0-4f7b-bfd1-d14f6b7203f6" />
+
 ## Run a fresh checkout
 
 Install Node.js 22.16+ and npm, then run:
