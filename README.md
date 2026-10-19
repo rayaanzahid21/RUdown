@@ -2,6 +2,9 @@
 
 Group outing planning with individual budgets, real venue discovery, explicit approvals and test contributions.
 
+## Demo video
+[Watch the RUdown demo](./RUDown-demo.mp4)
+
 Live site: https://rudown.rayaanzahid06.chatgpt.site (public). GitHub: https://github.com/rayaanzahid21/RUdown
 
 ## Screenshots
